@@ -1814,6 +1814,14 @@
     "Role": "Role",
     "Status": "Status"
   },
+  "labgpu": {
+    "GpuLending": "GPU lending",
+    "Lent": "Lent",
+    "LentFor": "for {{hours}}h {{minutes}}m (since {{since}})",
+    "LentGpus": "{{lent}} of {{total}} GPU(s) lent to spot jobs",
+    "NotLent": "Not lent",
+    "Ports": "Ports"
+  },
   "language": {
     "Brazilian": "brasileiro",
     "English": "English",

@@ -1829,6 +1829,14 @@
     "Role": "역할",
     "Status": "상태"
   },
+  "labgpu": {
+    "GpuLending": "GPU 대여",
+    "Lent": "빌려주는 중",
+    "LentFor": "{{hours}}시간 {{minutes}}분째 ({{since}}부터)",
+    "LentGpus": "GPU {{lent}}/{{total}}개를 스팟 작업에 빌려주고 있습니다",
+    "NotLent": "빌려주지 않음",
+    "Ports": "포트"
+  },
   "language": {
     "Brazilian": "brasileiro",
     "English": "English",

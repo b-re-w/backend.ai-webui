@@ -29,6 +29,11 @@ import SessionStatusTag from './ComputeSessionNodeItems/SessionStatusTag';
 import IdleCheckDescriptionModal from './IdleCheckDescriptionModal';
 import ImageNodeSimpleTag from './ImageNodeSimpleTag';
 import { UNSAFELazySessionImageTag } from './ImageTags';
+import {
+  LabGpuSessionLending,
+  LabGpuSessionPorts,
+  useLabGpuSessionInfo,
+} from './LabGpuSessionInfo';
 import MountedVFolderLinks from './MountedVFolderLinks';
 import ScopedAuditLog, { ScopedAuditLogQuery } from './ScopedAuditLog';
 import { getUnifiedSlotNameFromTag } from './SessionFormItems/ResourceAllocationFormItems';
@@ -262,10 +267,13 @@ const SessionDetailContent: React.FC<{
         ...MountedVFolderLinksFragment
         ...BAISessionAgentIdsFragment
         ...BAISessionClusterModeFragment
+        ...LabGpuSessionInfoFragment
       }
     `,
     (internalLoadedSession as SessionDetailContentFragment$key) || sessionFrgmt,
   );
+
+  const labGpuInfo = useLabGpuSessionInfo(session);
 
   // The feature to display imminent expiration time as a separate Alert is supported from version 24.12.
   const imminentExpirationTime = _.min(
@@ -514,6 +522,16 @@ const SessionDetailContent: React.FC<{
           <Descriptions.Item label={t('session.Agent')}>
             <BAISessionAgentIds sessionFrgmt={session} />
           </Descriptions.Item>
+          {labGpuInfo.ports.length > 0 && (
+            <Descriptions.Item label={t('labgpu.Ports')}>
+              <LabGpuSessionPorts info={labGpuInfo} />
+            </Descriptions.Item>
+          )}
+          {labGpuInfo.lending && (
+            <Descriptions.Item label={t('labgpu.GpuLending')}>
+              <LabGpuSessionLending lending={labGpuInfo.lending} />
+            </Descriptions.Item>
+          )}
           <Descriptions.Item label={t('session.Reservation')}>
             <BAIFlex gap={'xs'} wrap={'wrap'}>
               <SessionReservation sessionFrgmt={session} />
