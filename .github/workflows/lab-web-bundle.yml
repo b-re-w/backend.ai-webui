@@ -1,0 +1,64 @@
+# Lab fork: build the WebUI bundle on every push to develop and publish it as the rolling
+# pre-release "lab-develop", so lab servers can deploy it without a local Node toolchain:
+#
+#   gh release download lab-develop -R b-re-w/backend.ai-webui -p 'backend.ai-webui-bundle-*.zip'
+#   unzip -o backend.ai-webui-bundle-*.zip -d <backend.ai>/src/ai/backend/web/static
+#
+# Keep the server's own config.toml; the bundle ships config.toml.sample only.
+name: Lab web bundle
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+concurrency:
+  group: lab-web-bundle
+  cancel-in-progress: true
+
+env:
+  NODE_OPTIONS: --max-old-space-size=4096
+
+jobs:
+  build:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v5
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v6.4.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build web bundle
+        run: make bundle
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: web-bundle
+          path: app/backend.ai-webui-bundle-*.zip
+          retention-days: 30
+
+      - name: Publish rolling pre-release lab-develop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          notes="develop ${GITHUB_SHA::9} built $(date -u +%Y-%m-%dT%H:%MZ)"
+          if gh release view lab-develop >/dev/null 2>&1; then
+            gh release edit lab-develop --prerelease --notes "$notes"
+          else
+            gh release create lab-develop --prerelease --target "$GITHUB_SHA" --title "Lab develop build" --notes "$notes"
+          fi
+          for old in $(gh release view lab-develop --json assets -q '.assets[].name'); do
+            gh release delete-asset lab-develop "$old" --yes
+          done
+          for f in app/backend.ai-webui-bundle-*.zip; do gh release upload lab-develop "$f" --clobber; done
