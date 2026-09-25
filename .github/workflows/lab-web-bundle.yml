@@ -1,10 +1,13 @@
-# Lab fork: build the WebUI bundle on every push to develop and publish it as the rolling
-# pre-release "lab-develop", so lab servers can deploy it without a local Node toolchain:
+# Lab fork: on every push to develop, build the WebUI bundle and the desktop apps (Windows,
+# Linux, macOS; x64 and arm64) and publish them as the rolling pre-release "lab-develop".
 #
+# Web bundle on a lab server (no local Node toolchain needed):
 #   gh release download lab-develop -R b-re-w/backend.ai-webui -p 'backend.ai-webui-bundle-*.zip'
 #   unzip -o backend.ai-webui-bundle-*.zip -d <backend.ai>/src/ai/backend/web/static
-#
 # Keep the server's own config.toml; the bundle ships config.toml.sample only.
+#
+# The macOS apps are not signed (the fork has no Apple signing secrets): on first launch
+# macOS blocks them until the user allows the app in System Settings > Privacy & Security.
 name: Lab web bundle
 on:
   push:
@@ -19,14 +22,12 @@ env:
   NODE_OPTIONS: --max-old-space-size=4096
 
 jobs:
-  build:
-    permissions:
-      contents: write
+  web:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # versiontag counts commits
 
       - uses: pnpm/action-setup@v5
         with:
@@ -48,10 +49,117 @@ jobs:
           path: app/backend.ai-webui-bundle-*.zip
           retention-days: 30
 
+      # The desktop jobs package this same build.
+      - uses: actions/upload-artifact@v5
+        with:
+          name: web-build
+          path: |
+            build/web/
+            src/wsproxy/dist/
+          retention-days: 1
+          compression-level: 3
+
+  desktop:
+    needs: web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v5
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v6.4.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: web-build
+
+      - run: make dep_electron
+
+      - name: Compile local proxies
+        run: |
+          make compile_localproxy os=win arch=x64 local_proxy_postfix=.exe &
+          make compile_localproxy os=win arch=arm64 local_proxy_postfix=.exe &
+          make compile_localproxy os=linux arch=x64 local_proxy_postfix= &
+          make compile_localproxy os=linux arch=arm64 local_proxy_postfix= &
+          wait
+
+      - name: Package Windows and Linux apps
+        run: |
+          make win_x64
+          make win_arm64
+          make linux_x64
+          make linux_arm64
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: desktop-win-linux
+          path: app/backend.ai-desktop-*.zip
+          retention-days: 30
+
+  mac:
+    needs: web
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v5
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v6.4.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: web-build
+
+      - run: make dep_electron
+
+      - name: Compile local proxies
+        run: |
+          make compile_localproxy os=macos arch=x64 local_proxy_postfix= &
+          make compile_localproxy os=macos arch=arm64 local_proxy_postfix= &
+          wait
+
+      - name: Package macOS apps (unsigned)
+        run: |
+          make mac_x64
+          make mac_arm64
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: desktop-mac
+          path: app/backend.ai-desktop-*.dmg
+          retention-days: 30
+
+  release:
+    needs: [web, desktop, mac]
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
       - name: Publish rolling pre-release lab-develop
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
+          ls -l dist
           notes="develop ${GITHUB_SHA::9} built $(date -u +%Y-%m-%dT%H:%MZ)"
           if gh release view lab-develop >/dev/null 2>&1; then
             gh release edit lab-develop --prerelease --notes "$notes"
@@ -61,4 +169,4 @@ jobs:
           for old in $(gh release view lab-develop --json assets -q '.assets[].name'); do
             gh release delete-asset lab-develop "$old" --yes
           done
-          for f in app/backend.ai-webui-bundle-*.zip; do gh release upload lab-develop "$f" --clobber; done
+          gh release upload lab-develop dist/*.zip dist/*.dmg --clobber
