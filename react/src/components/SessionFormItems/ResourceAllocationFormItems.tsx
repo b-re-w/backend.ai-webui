@@ -501,10 +501,12 @@ const ResourceAllocationFormItems: React.FC<
       const mem = convertToBinaryUnit(slots?.mem || 0, 'g', 2)?.value;
       const acceleratorObj = _.omit(slots, ['cpu', 'mem', 'shmem']);
 
-      // Select the first matched AI accelerator type and value
+      // Select the first matched AI accelerator type and value. The manager
+      // fills every slot type the preset does not use with '0', so only an
+      // amount above zero marks the preset's accelerator.
       const firstMatchedAcceleratorType = _.find(
         _.keys(acceleratorSlotsInRG),
-        (value) => acceleratorObj[value] !== undefined,
+        (value) => _.toNumber(acceleratorObj[value]) > 0,
       );
 
       let acceleratorSetting: {
