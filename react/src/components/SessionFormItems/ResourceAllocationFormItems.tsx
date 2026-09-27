@@ -388,12 +388,23 @@ const ResourceAllocationFormItems: React.FC<
         currentImageAcceleratorLimits &&
         currentImageAcceleratorLimits.length > 0
       ) {
+        const selectedAcceleratorType = form.getFieldValue([
+          'resource',
+          'acceleratorType',
+        ]);
         if (
           _.find(
             currentImageAcceleratorLimits,
-            (limit) =>
-              limit?.key ===
-              form.getFieldValue(['resource', 'acceleratorType']),
+            (limit) => limit?.key === selectedAcceleratorType,
+          ) ||
+          // Plugin slots such as `cuda-pro5000.shares` are not in the image's
+          // resource limits (only `cuda.device`/`cuda.shares` are), but the
+          // image supports them by accelerator prefix, the same rule as
+          // `supportedAcceleratorTypesInRGByImage`. Without this a preset's
+          // accelerator was swapped for `cuda.device` 0 and dropped.
+          _.includes(
+            supportedAcceleratorTypesInRGByImage,
+            selectedAcceleratorType,
           )
         ) {
           // if current selected accelerator type is supported in the selected image,
