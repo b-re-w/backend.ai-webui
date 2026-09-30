@@ -79,9 +79,47 @@ protocol.registerSchemesAsPrivileged([
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow;
+// One app process only: launching it again (e.g. middle-click on the taskbar)
+// reopens or focuses the main window of the running app, which still holds the
+// login session, instead of starting a second, logged-out app.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    } else if (app.isReady()) {
+      createWindow();
+    }
+  });
+}
 // Session app windows (VS Code, Jupyter, ...). The app keeps running while any
 // of them is open, even after the main window is closed.
 const appWindows = new Set();
+// An app page that blocks unloading (beforeunload: unsaved work, or a terminal
+// such as ttyd that always asks) gets the browser's leave prompt; without a
+// handler Electron silently cancels the close.
+function confirmLeave(contents, parentWindow) {
+  contents.on('will-prevent-unload', (event) => {
+    const parent =
+      parentWindow || BrowserWindow.fromWebContents(contents) || undefined;
+    const choice = dialog.showMessageBoxSync(parent, {
+      type: 'question',
+      buttons: ['Leave', 'Stay'],
+      defaultId: 0,
+      cancelId: 1,
+      title: 'Leave app?',
+      message: 'This app may have unsaved changes or a running session.',
+      detail: 'Close it anyway?',
+    });
+    if (choice === 0) {
+      event.preventDefault(); // ignore beforeunload and close
+    }
+  });
+}
+
 function trackAppWindow(win) {
   appWindows.add(win);
   win.on('closed', () => appWindows.delete(win));
@@ -475,6 +513,24 @@ function createWindow() {
     }
   });
 
+  registerMainWindowIpc();
+  mainWindow.on('closed', function () {
+    mainWindow = null;
+    mainContent = null;
+    devtools = null;
+  });
+
+  mainWindow.webContents.setWindowOpenHandler((details) => {
+    return newPopupWindow(details);
+  });
+}
+
+// Registered once: the main window can be created again (second launch) and
+// ipcMain handlers are process-wide.
+let mainWindowIpcRegistered = false;
+function registerMainWindowIpc() {
+  if (mainWindowIpcRegistered) return;
+  mainWindowIpcRegistered = true;
   // The WebUI header tells us its colors so the overlay buttons match it (and
   // follow the light/dark theme).
   ipcMain.on('title-bar-overlay', (event, colors) => {
@@ -508,15 +564,6 @@ function createWindow() {
       return;
     }
     app.quit();
-  });
-  mainWindow.on('closed', function () {
-    mainWindow = null;
-    mainContent = null;
-    devtools = null;
-  });
-
-  mainWindow.webContents.setWindowOpenHandler((details) => {
-    return newPopupWindow(details);
   });
 }
 
@@ -668,6 +715,8 @@ function newAppWindow(details) {
     event.preventDefault();
     view.webContents.close({ waitForBeforeUnload: true });
   });
+  confirmLeave(view.webContents, win);
+  confirmLeave(win.webContents, win); // the app page itself after a PWA hand-off
   view.webContents.on('destroyed', () => {
     viewUnloaded = true;
     if (viewAttached && !win.isDestroyed()) win.close();
@@ -708,6 +757,7 @@ function newPopupWindow(details) {
   }
   newGuest = new BrowserWindow(options);
   trackAppWindow(newGuest);
+  confirmLeave(newGuest.webContents, newGuest);
   newGuest.once('ready-to-show', () => {
     newGuest.show();
   });
@@ -763,6 +813,7 @@ function setSameSitePolicy() {
 }
 
 app.on('ready', () => {
+  if (!gotSingleInstanceLock) return;
   // Registering the 'file' protocol
   protocol.handle('file', async (request) => {
     let url = request.url.substr(7); // strip 'file://' from the URL
