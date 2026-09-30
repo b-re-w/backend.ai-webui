@@ -190,6 +190,12 @@ package_dmg:
 ifdef BAI_APP_SIGN_KEYCHAIN
 	@security default-keychain -s login.keychain
 endif
+ifdef BAI_APP_ADHOC_SIGN
+	@# Lab fork: no Developer ID, so sign ad hoc (no certificate). Apple silicon then opens the
+	@# app after the one-time "unidentified developer" approval instead of calling it damaged.
+	@codesign --force --deep --sign - "./app/Backend.AI Desktop-darwin-$(arch)/Backend.AI Desktop.app"
+	@codesign --verify --deep --strict --verbose=1 "./app/Backend.AI Desktop-darwin-$(arch)/Backend.AI Desktop.app"
+endif
 	@rm -rf ./app/backend.ai-desktop-$(os)-$(arch)
 	@cd app; mv "Backend.AI Desktop-darwin-$(arch)" backend.ai-desktop-$(os)-$(arch);
 	@npx electron-installer-dmg './app/backend.ai-desktop-$(os)-$(arch)/Backend.AI Desktop.app' ./app/backend.ai-desktop-$(arch)-$(BUILD_DATE) --overwrite --icon=manifest/backend-ai.icns --title=Backend.AI

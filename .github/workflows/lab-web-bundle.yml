@@ -6,8 +6,9 @@
 #   unzip -o backend.ai-webui-bundle-*.zip -d <backend.ai>/src/ai/backend/web/static
 # Keep the server's own config.toml; the bundle ships config.toml.sample only.
 #
-# The macOS apps are not signed (the fork has no Apple signing secrets): on first launch
-# macOS blocks them until the user allows the app in System Settings > Privacy & Security.
+# The macOS apps are signed ad hoc (the fork has no Apple Developer ID): on first launch
+# macOS shows "unidentified developer" until the user allows the app in System Settings >
+# Privacy & Security ("Open Anyway").
 name: Lab web bundle
 on:
   push:
@@ -132,7 +133,9 @@ jobs:
           make compile_localproxy os=macos arch=arm64 local_proxy_postfix= &
           wait
 
-      - name: Package macOS apps (unsigned)
+      - name: Package macOS apps (ad hoc signed)
+        env:
+          BAI_APP_ADHOC_SIGN: '1'
         run: |
           make mac_x64
           make mac_arm64
