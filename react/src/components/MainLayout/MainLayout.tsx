@@ -186,27 +186,20 @@ function MainLayout() {
           }}
         >
           <BAIContentWithDrawerArea drawerWidth={DRAWER_WIDTH}>
+            {/* The header sits above the scroll area (not sticky inside it), so
+                the scrollbar starts below it and never runs under the native
+                window buttons the desktop app draws over the header. */}
             <BAIFlex
-              ref={contentScrollFlexRef}
               direction="column"
               align="stretch"
-              style={{
-                paddingLeft: token.paddingContentHorizontalLG,
-                paddingRight: token.paddingContentHorizontalLG,
-                paddingBottom: token.paddingContentVertical,
-                height: '100vh',
-                overflow: 'auto',
-              }}
+              style={{ height: '100vh' }}
             >
-              <BAIErrorBoundary>
-                <div
-                  style={{
-                    margin: `0 -${token.paddingContentHorizontalLG}px 0 -${token.paddingContentHorizontalLG}px`,
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: HEADER_Z_INDEX_IN_MAIN_LAYOUT,
-                  }}
-                >
+              <div
+                style={{
+                  zIndex: HEADER_Z_INDEX_IN_MAIN_LAYOUT,
+                }}
+              >
+                <BAIErrorBoundary>
                   <Suspense
                     fallback={
                       <div
@@ -227,91 +220,107 @@ function MainLayout() {
                       <NetworkStatusBanner />
                     </Suspense>
                   </ErrorBoundaryWithNullFallback>
-                </div>
-                {/* Non sticky Alert components */}
-                <Suspense fallback={<div style={{ minHeight: '0px' }} />}>
-                  <BAIFlex
-                    direction="column"
-                    gap={'sm'}
-                    align="stretch"
-                    className={styles.alertWrapper}
-                  >
-                    {/* Dev-only: warn when the connected backend differs from
-                        VITE_DEFAULT_API_ENDPOINT. Guarded by import.meta.env.DEV
-                        so it is dead-code eliminated from production builds. */}
-                    {import.meta.env.DEV && (
-                      <ErrorBoundaryWithNullFallback>
-                        <DevApiEndpointMismatchAlert />
-                      </ErrorBoundaryWithNullFallback>
-                    )}
-                    <ErrorBoundaryWithNullFallback>
-                      <ThemePreviewModeAlert />
-                    </ErrorBoundaryWithNullFallback>
-                    <ErrorBoundaryWithNullFallback>
-                      <ProjectAdminScopeAlert />
-                    </ErrorBoundaryWithNullFallback>
-                    <ErrorBoundaryWithNullFallback>
-                      <NoResourceGroupAlert />
-                    </ErrorBoundaryWithNullFallback>
-                    <ErrorBoundaryWithNullFallback>
-                      <PasswordChangeRequestAlert
-                        showIcon
-                        icon={undefined}
-                        banner={false}
-                        closable
-                      />
-                    </ErrorBoundaryWithNullFallback>
-                  </BAIFlex>
-                </Suspense>
-                <Suspense>
-                  <ErrorBoundaryWithNullFallback>
-                    {/* ForceTOTPChecker is a component for previous version of manager which don't support TOTP registration before login.  */}
-                    {/* https://github.com/lablup/backend.ai/pull/4354 */}
-                    <ForceTOTPChecker />
-                  </ErrorBoundaryWithNullFallback>
-                </Suspense>
-                <Suspense>
-                  <ErrorBoundaryWithNullFallback>
-                    <RouteAccessBreadcrumbGate>
-                      {isHiddenBreadcrumb ? (
-                        <div
-                          style={{
-                            marginBottom: token.marginMD,
-                          }}
-                        />
-                      ) : (
-                        <WebUIBreadcrumb
-                          style={{
-                            marginBottom: token.marginMD,
-                            marginLeft: token.paddingContentHorizontalLG * -1,
-                            marginRight: token.paddingContentHorizontalLG * -1,
-                          }}
-                        />
+                </BAIErrorBoundary>
+              </div>
+              <BAIFlex
+                ref={contentScrollFlexRef}
+                direction="column"
+                align="stretch"
+                style={{
+                  paddingLeft: token.paddingContentHorizontalLG,
+                  paddingRight: token.paddingContentHorizontalLG,
+                  paddingBottom: token.paddingContentVertical,
+                  flex: 1,
+                  minHeight: 0,
+                  overflow: 'auto',
+                }}
+              >
+                <BAIErrorBoundary>
+                  {/* Non sticky Alert components */}
+                  <Suspense fallback={<div style={{ minHeight: '0px' }} />}>
+                    <BAIFlex
+                      direction="column"
+                      gap={'sm'}
+                      align="stretch"
+                      className={styles.alertWrapper}
+                    >
+                      {/* Dev-only: warn when the connected backend differs from
+                          VITE_DEFAULT_API_ENDPOINT. Guarded by import.meta.env.DEV
+                          so it is dead-code eliminated from production builds. */}
+                      {import.meta.env.DEV && (
+                        <ErrorBoundaryWithNullFallback>
+                          <DevApiEndpointMismatchAlert />
+                        </ErrorBoundaryWithNullFallback>
                       )}
-                    </RouteAccessBreadcrumbGate>
+                      <ErrorBoundaryWithNullFallback>
+                        <ThemePreviewModeAlert />
+                      </ErrorBoundaryWithNullFallback>
+                      <ErrorBoundaryWithNullFallback>
+                        <ProjectAdminScopeAlert />
+                      </ErrorBoundaryWithNullFallback>
+                      <ErrorBoundaryWithNullFallback>
+                        <NoResourceGroupAlert />
+                      </ErrorBoundaryWithNullFallback>
+                      <ErrorBoundaryWithNullFallback>
+                        <PasswordChangeRequestAlert
+                          showIcon
+                          icon={undefined}
+                          banner={false}
+                          closable
+                        />
+                      </ErrorBoundaryWithNullFallback>
+                    </BAIFlex>
+                  </Suspense>
+                  <Suspense>
+                    <ErrorBoundaryWithNullFallback>
+                      {/* ForceTOTPChecker is a component for previous version of manager which don't support TOTP registration before login.  */}
+                      {/* https://github.com/lablup/backend.ai/pull/4354 */}
+                      <ForceTOTPChecker />
+                    </ErrorBoundaryWithNullFallback>
+                  </Suspense>
+                  <Suspense>
+                    <ErrorBoundaryWithNullFallback>
+                      <RouteAccessBreadcrumbGate>
+                        {isHiddenBreadcrumb ? (
+                          <div
+                            style={{
+                              marginBottom: token.marginMD,
+                            }}
+                          />
+                        ) : (
+                          <WebUIBreadcrumb
+                            style={{
+                              marginBottom: token.marginMD,
+                              marginLeft: token.paddingContentHorizontalLG * -1,
+                              marginRight: token.paddingContentHorizontalLG * -1,
+                            }}
+                          />
+                        )}
+                      </RouteAccessBreadcrumbGate>
+                    </ErrorBoundaryWithNullFallback>
+                    {/* Fills the viewport space left below header/alerts/
+                        breadcrumb so route-error screens (RouteErrorContent
+                        `flex: 1`) center in the Outlet area, identically in
+                        every scope. Taller pages still grow and scroll. */}
+                    <BAIFlex
+                      direction="column"
+                      align="stretch"
+                      style={{ flexGrow: 1 }}
+                    >
+                      <BAIErrorBoundary>
+                        <AutoAdminPrimaryColorProvider>
+                          <ResourceSlotsWrapper>
+                            <Outlet />
+                          </ResourceSlotsWrapper>
+                        </AutoAdminPrimaryColorProvider>
+                      </BAIErrorBoundary>
+                    </BAIFlex>
+                  </Suspense>
+                  <ErrorBoundaryWithNullFallback>
+                    <PluginLoader />
                   </ErrorBoundaryWithNullFallback>
-                  {/* Fills the viewport space left below header/alerts/
-                      breadcrumb so route-error screens (RouteErrorContent
-                      `flex: 1`) center in the Outlet area, identically in
-                      every scope. Taller pages still grow and scroll. */}
-                  <BAIFlex
-                    direction="column"
-                    align="stretch"
-                    style={{ flexGrow: 1 }}
-                  >
-                    <BAIErrorBoundary>
-                      <AutoAdminPrimaryColorProvider>
-                        <ResourceSlotsWrapper>
-                          <Outlet />
-                        </ResourceSlotsWrapper>
-                      </AutoAdminPrimaryColorProvider>
-                    </BAIErrorBoundary>
-                  </BAIFlex>
-                </Suspense>
-                <ErrorBoundaryWithNullFallback>
-                  <PluginLoader />
-                </ErrorBoundaryWithNullFallback>
-              </BAIErrorBoundary>
+                </BAIErrorBoundary>
+              </BAIFlex>
             </BAIFlex>
           </BAIContentWithDrawerArea>
         </Layout>
