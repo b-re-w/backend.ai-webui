@@ -7,6 +7,8 @@ const {
   Menu,
   shell,
   BrowserWindow,
+  WebContentsView,
+  nativeTheme,
   protocol,
   session,
   clipboard,
@@ -501,7 +503,130 @@ function createWindow() {
   });
 }
 
+// Session app windows (VS Code, Jupyter, ...) on Windows/Linux. The app page is
+// not ours, so it has no drag region and nothing keeps it clear of the native
+// window buttons. By default the window shows a thin title bar of our own
+// (drag region, page title, native buttons drawn over its right end) with the
+// app in a WebContentsView below it. An app whose web manifest opts into Window
+// Controls Overlay (a PWA such as VS Code for the Web) draws its own title bar,
+// so it gets the whole window instead.
+const APP_TITLE_BAR_HEIGHT = 32;
+const PWA_WCO_CHECK = `(async () => {
+  const link = document.querySelector('link[rel="manifest"]');
+  if (!link) return false;
+  try {
+    const res = await fetch(link.href, { credentials: 'include' });
+    const manifest = await res.json();
+    return (manifest.display_override || []).includes('window-controls-overlay');
+  } catch (e) {
+    return false;
+  }
+})()`;
+
+function appTitleBarColors() {
+  return nativeTheme.shouldUseDarkColors
+    ? { color: '#202020', symbolColor: '#e6e6e6' }
+    : { color: '#f3f3f3', symbolColor: '#1f1f1f' };
+}
+
+function appTitleBarPage(colors) {
+  const html = `<!doctype html><html><head><meta charset="utf-8"><style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: ${colors.color}; }
+    #bar { height: ${APP_TITLE_BAR_HEIGHT}px; display: flex; align-items: center;
+      padding-left: 12px; -webkit-app-region: drag; color: ${colors.symbolColor};
+      font: 12px 'Segoe UI', system-ui, sans-serif; user-select: none;
+      width: calc(env(titlebar-area-x, 0px) + env(titlebar-area-width, 100%) - 12px); }
+    #title { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  </style></head><body><div id="bar"><span id="title"></span></div></body></html>`;
+  return 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
+}
+
+function newAppWindow(details) {
+  const colors = appTitleBarColors();
+  const win = new BrowserWindow({
+    frame: true,
+    show: false,
+    backgroundColor: colors.color,
+    width: windowWidth,
+    height: windowHeight,
+    closable: true,
+    modal: details.frameName === 'modal',
+    titleBarStyle: 'hidden',
+    titleBarOverlay: { ...colors, height: APP_TITLE_BAR_HEIGHT },
+    webPreferences: { javascript: true },
+  });
+  const view = new WebContentsView({ webPreferences: { javascript: true } });
+  let viewAttached = true;
+  const layout = () => {
+    if (!viewAttached) return;
+    const [width, height] = win.getContentSize();
+    view.setBounds({
+      x: 0,
+      y: APP_TITLE_BAR_HEIGHT,
+      width,
+      height: Math.max(height - APP_TITLE_BAR_HEIGHT, 0),
+    });
+  };
+  win.contentView.addChildView(view);
+  layout();
+  win.on('resize', layout);
+  win.on('maximize', layout);
+  win.on('unmaximize', layout);
+  win.on('enter-full-screen', layout);
+  win.on('leave-full-screen', layout);
+
+  const setTitle = (title) => {
+    win.setTitle(title);
+    if (viewAttached) {
+      win.webContents
+        .executeJavaScript(
+          `document.getElementById('title').textContent = ${JSON.stringify(title)};`,
+        )
+        .catch(() => {});
+    }
+  };
+  view.webContents.on('page-title-updated', (_event, title) => setTitle(title));
+  view.webContents.setWindowOpenHandler((d) => newPopupWindow(d));
+  win.webContents.setWindowOpenHandler((d) => newPopupWindow(d));
+
+  // PWA with Window Controls Overlay: hand the whole window to the app, which
+  // then draws its own title bar around the native buttons.
+  view.webContents.once('did-finish-load', async () => {
+    let wantsOverlay = false;
+    try {
+      wantsOverlay = await view.webContents.executeJavaScript(PWA_WCO_CHECK);
+    } catch (e) {
+      wantsOverlay = false;
+    }
+    if (!wantsOverlay || win.isDestroyed()) return;
+    const appURL = view.webContents.getURL();
+    viewAttached = false;
+    win.contentView.removeChildView(view);
+    view.webContents.close();
+    win.webContents.on('page-title-updated', (_event, title) => win.setTitle(title));
+    win.loadURL(appURL);
+  });
+
+  win.on('closed', () => {
+    if (viewAttached && !view.webContents.isDestroyed()) {
+      view.webContents.close();
+    }
+  });
+  win.once('ready-to-show', () => win.show());
+  win.loadURL(appTitleBarPage(colors));
+  view.webContents.loadURL(details.url);
+  if (debugMode === true) {
+    devtools = new BrowserWindow();
+    view.webContents.setDevToolsWebContents(devtools.webContents);
+    view.webContents.openDevTools({ mode: 'detach' });
+  }
+  return { action: 'deny' };
+}
+
 function newPopupWindow(details) {
+  if (useTitleBarOverlay) {
+    return newAppWindow(details);
+  }
   // let disposition = details.disposition;
   let options = {
     frame: true,
