@@ -155,7 +155,8 @@ const WebUIHeader: React.FC<WebUIHeaderProps> = ({ onClickMenuIcon }) => {
   // Desktop app on Windows/Linux: the native window buttons are drawn over the
   // right end of this header. Their background stays transparent so the page
   // (header, or a drawer/modal mask over it) shows through; the symbols use the
-  // header text color, dimmed like the header while a mask covers the page.
+  // header text color, dimmed like the header while a modal mask covers the
+  // page (side drawers keep the header clear, see MainLayout).
   const headerFg = token.colorBgBase;
   const maskColor = token.colorBgMask;
   useEffect(() => {
@@ -166,7 +167,7 @@ const WebUIHeader: React.FC<WebUIHeaderProps> = ({ onClickMenuIcon }) => {
     let last = '';
     const update = () => {
       const masked = _.some(
-        document.querySelectorAll('.ant-drawer-mask, .ant-modal-mask'),
+        document.querySelectorAll('.ant-modal-mask'),
         (el) => (el as HTMLElement).offsetParent !== null,
       );
       const symbolColor = masked ? blendOver(headerFg, maskColor) : headerFg;

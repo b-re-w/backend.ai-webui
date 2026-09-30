@@ -57,10 +57,13 @@ export const mainContentDivRefState = atom<React.RefObject<HTMLElement | null>>(
 // survives a strict CSP style-src policy — unlike a raw <style> element.
 const ScrollbarGlobalStyle = createGlobalStyle`
   /* Desktop app on Windows/Linux: the native window buttons are drawn over the
-     top of the window, above any page content. Side drawers start below them
-     so their header buttons stay visible. env() is 0 in a browser. */
+     top of the window, above any page content. Side drawers and their mask
+     start below that row, so the drawer's own buttons stay visible and the
+     header above is not dimmed. env() is 0 in a browser. */
   .ant-drawer-right > .ant-drawer-content-wrapper,
-  .ant-drawer-left > .ant-drawer-content-wrapper {
+  .ant-drawer-left > .ant-drawer-content-wrapper,
+  .ant-drawer-right > .ant-drawer-mask,
+  .ant-drawer-left > .ant-drawer-mask {
     top: env(titlebar-area-height, 0px);
   }
 
