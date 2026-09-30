@@ -54,6 +54,12 @@ if (process.env.serveMode == 'dev') {
 
 const windowWidth = 1280;
 const windowHeight = 970;
+// Windows/Linux: hide the native title bar and menu, and draw only the native
+// minimize/maximize/close buttons over the page (Window Controls Overlay), like
+// VS Code. macOS keeps its own title bar style.
+const useTitleBarOverlay = process.platform !== 'darwin';
+// Matches the WebUI header height (token.Layout.headerHeight).
+const MAIN_TITLE_BAR_HEIGHT = 60;
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -364,7 +370,16 @@ function createWindow() {
     height: windowHeight,
     title: 'Backend.AI',
     frame: true,
-    titleBarStyle: 'customButtonsOnHover',
+    ...(useTitleBarOverlay
+      ? {
+          titleBarStyle: 'hidden',
+          titleBarOverlay: {
+            color: '#00000000',
+            symbolColor: '#ffffff',
+            height: MAIN_TITLE_BAR_HEIGHT,
+          },
+        }
+      : { titleBarStyle: 'customButtonsOnHover' }),
     webPreferences: {
       nativeWindowOpen: true,
       nodeIntegration: false,
@@ -449,6 +464,20 @@ function createWindow() {
       });
       manager.start();
     }
+  });
+
+  // The WebUI header tells us its colors so the overlay buttons match it (and
+  // follow the light/dark theme).
+  ipcMain.on('title-bar-overlay', (event, colors) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!useTitleBarOverlay || !win || typeof win.setTitleBarOverlay !== 'function') {
+      return;
+    }
+    win.setTitleBarOverlay({
+      color: colors?.color || '#00000000',
+      symbolColor: colors?.symbolColor || '#ffffff',
+      height: MAIN_TITLE_BAR_HEIGHT,
+    });
   });
 
   ipcMain.on('app-closed', (_) => {

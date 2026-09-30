@@ -38,7 +38,7 @@ import { createStyles } from 'antd-style';
 import { BAIFlex, BAIFlexProps } from 'backend.ai-ui';
 import * as _ from 'lodash-es';
 import { MenuIcon } from 'lucide-react';
-import { Suspense, useState, useTransition } from 'react';
+import { Suspense, useEffect, useState, useTransition } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMatches } from 'react-router-dom';
 
@@ -137,6 +137,19 @@ const WebUIHeader: React.FC<WebUIHeaderProps> = ({ onClickMenuIcon }) => {
 
   const { styles } = useStyles();
 
+  // Desktop app on Windows/Linux: the native window buttons are drawn over the
+  // right end of this header, so color them like the header.
+  const headerBg = token.Layout?.headerBg;
+  const headerFg = token.colorBgBase;
+  useEffect(() => {
+    if (headerBg && headerFg) {
+      globalThis.__titleBarOverlay?.setColors({
+        color: headerBg,
+        symbolColor: headerFg,
+      });
+    }
+  }, [headerBg, headerFg]);
+
   return (
     <BAIFlex
       data-testid="webui-header"
@@ -146,7 +159,9 @@ const WebUIHeader: React.FC<WebUIHeaderProps> = ({ onClickMenuIcon }) => {
       style={{
         height: token.Layout?.headerHeight || 60,
         backgroundColor: token.Layout?.headerBg,
-        paddingRight: token.marginLG,
+        // Keep clear of the native window buttons drawn over the header in the
+        // desktop app (Window Controls Overlay); adds nothing in a browser.
+        paddingRight: `calc(${token.marginLG}px + 100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw))`,
         paddingLeft: token.marginLG,
         color: token.colorBgBase,
       }}

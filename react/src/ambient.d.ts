@@ -38,6 +38,12 @@ declare module globalThis {
   var isElectron: boolean;
   // eslint-disable-next-line no-var
   var electronInitialHref: string;
+  // Set by the desktop app preload on Windows/Linux, where the native window
+  // buttons are drawn over the header (title bar overlay).
+  // eslint-disable-next-line no-var
+  var __titleBarOverlay:
+    | { setColors: (colors: { color: string; symbolColor: string }) => void }
+    | undefined;
   // eslint-disable-next-line no-var
   var packageEdition: string;
   // eslint-disable-next-line no-var
