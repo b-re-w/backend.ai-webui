@@ -54,6 +54,21 @@ const useStyles = createStyles(({ css }) => ({
   `,
 }));
 
+// `base` (#rrggbb) seen through a translucent `mask` (rgba(...)), as #rrggbb.
+const blendOver = (base: string, mask?: string): string => {
+  const m = mask?.match(/rgba?\(([^)]+)\)/);
+  const b = base.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i);
+  if (!m || !b) {
+    return base;
+  }
+  const [mr, mg, mb, ma = 1] = m[1].split(',').map((v) => parseFloat(v));
+  const mix = (c: string, mc: number) =>
+    Math.round(parseInt(c, 16) * (1 - ma) + mc * ma)
+      .toString(16)
+      .padStart(2, '0');
+  return `#${mix(b[1], mr)}${mix(b[2], mg)}${mix(b[3], mb)}`;
+};
+
 export interface WebUIHeaderProps extends BAIFlexProps {
   onClickMenuIcon?: () => void;
 }
@@ -138,17 +153,38 @@ const WebUIHeader: React.FC<WebUIHeaderProps> = ({ onClickMenuIcon }) => {
   const { styles } = useStyles();
 
   // Desktop app on Windows/Linux: the native window buttons are drawn over the
-  // right end of this header, so color them like the header.
-  const headerBg = token.Layout?.headerBg;
+  // right end of this header. Their background stays transparent so the page
+  // (header, or a drawer/modal mask over it) shows through; the symbols use the
+  // header text color, dimmed like the header while a mask covers the page.
   const headerFg = token.colorBgBase;
+  const maskColor = token.colorBgMask;
   useEffect(() => {
-    if (headerBg && headerFg) {
-      globalThis.__titleBarOverlay?.setColors({
-        color: headerBg,
-        symbolColor: headerFg,
-      });
+    const overlay = globalThis.__titleBarOverlay;
+    if (!overlay || !headerFg) {
+      return;
     }
-  }, [headerBg, headerFg]);
+    let last = '';
+    const update = () => {
+      const masked = _.some(
+        document.querySelectorAll('.ant-drawer-mask, .ant-modal-mask'),
+        (el) => (el as HTMLElement).offsetParent !== null,
+      );
+      const symbolColor = masked ? blendOver(headerFg, maskColor) : headerFg;
+      if (symbolColor !== last) {
+        last = symbolColor;
+        overlay.setColors({ color: '#00000000', symbolColor });
+      }
+    };
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'style'],
+    });
+    return () => observer.disconnect();
+  }, [headerFg, maskColor]);
 
   return (
     <BAIFlex

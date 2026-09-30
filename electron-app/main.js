@@ -529,6 +529,41 @@ function appTitleBarColors() {
     : { color: '#f3f3f3', symbolColor: '#1f1f1f' };
 }
 
+// Symbol color readable on `color` (#rrggbb), or null if it cannot be parsed.
+function symbolColorFor(color) {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i.exec(color || '');
+  if (!m) return null;
+  const [r, g, b] = m.slice(1).map((h) => parseInt(h, 16));
+  return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? '#1f1f1f' : '#e6e6e6';
+}
+
+// A PWA drawing its own title bar sets <meta name="theme-color"> to its title
+// bar color (VS Code follows its color theme). Keep the native buttons on it:
+// react to the change event, and poll every second in case it is missed.
+const THEME_COLOR_READ = `(() => {
+  const m = document.querySelector('meta[name="theme-color"]');
+  return m ? m.content : '';
+})()`;
+function followThemeColor(win) {
+  let last = '';
+  const apply = (color) => {
+    const symbolColor = symbolColorFor(color);
+    if (!symbolColor || color === last || win.isDestroyed()) return;
+    last = color;
+    win.setTitleBarOverlay({ color, symbolColor, height: APP_TITLE_BAR_HEIGHT });
+    win.setBackgroundColor(color);
+  };
+  win.webContents.on('did-change-theme-color', (_event, color) => apply(color));
+  const timer = setInterval(() => {
+    if (win.isDestroyed()) return clearInterval(timer);
+    win.webContents
+      .executeJavaScript(THEME_COLOR_READ)
+      .then(apply)
+      .catch(() => {});
+  }, 1000);
+  win.on('closed', () => clearInterval(timer));
+}
+
 function appTitleBarPage(colors) {
   const html = `<!doctype html><html><head><meta charset="utf-8"><style>
     html, body { margin: 0; height: 100%; overflow: hidden; background: ${colors.color}; }
@@ -604,6 +639,7 @@ function newAppWindow(details) {
     win.contentView.removeChildView(view);
     view.webContents.close();
     win.webContents.on('page-title-updated', (_event, title) => win.setTitle(title));
+    followThemeColor(win);
     win.loadURL(appURL);
   });
 
