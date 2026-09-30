@@ -79,6 +79,13 @@ protocol.registerSchemesAsPrivileged([
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow;
+// Session app windows (VS Code, Jupyter, ...). The app keeps running while any
+// of them is open, even after the main window is closed.
+const appWindows = new Set();
+function trackAppWindow(win) {
+  appWindows.add(win);
+  win.on('closed', () => appWindows.delete(win));
+}
 let mainContent;
 let devtools;
 const manager = new ProxyManager();
@@ -487,9 +494,19 @@ function createWindow() {
       // Force close app when it is closed even on macOS.
       // app.quit()
     }
+    const closingMain = mainWindow;
     mainWindow = null;
     mainContent = null;
     devtools = null;
+    // Session app windows stay usable without the main window (the app, and
+    // with it the local proxy, keeps running); the app quits when the last one
+    // closes (window-all-closed).
+    if (appWindows.size > 0) {
+      if (closingMain && !closingMain.isDestroyed()) {
+        closingMain.destroy();
+      }
+      return;
+    }
     app.quit();
   });
   mainWindow.on('closed', function () {
@@ -643,11 +660,19 @@ function newAppWindow(details) {
     win.loadURL(appURL);
   });
 
-  win.on('closed', () => {
-    if (viewAttached && !view.webContents.isDestroyed()) {
-      view.webContents.close();
-    }
+  // Closing the window asks the app page first: an app with unsaved work
+  // (beforeunload) keeps the window open, as when the page was the window's own.
+  let viewUnloaded = false;
+  win.on('close', (event) => {
+    if (viewUnloaded || !viewAttached || view.webContents.isDestroyed()) return;
+    event.preventDefault();
+    view.webContents.close({ waitForBeforeUnload: true });
   });
+  view.webContents.on('destroyed', () => {
+    viewUnloaded = true;
+    if (viewAttached && !win.isDestroyed()) win.close();
+  });
+  trackAppWindow(win);
   win.once('ready-to-show', () => win.show());
   win.loadURL(appTitleBarPage(colors));
   view.webContents.loadURL(details.url);
@@ -682,6 +707,7 @@ function newPopupWindow(details) {
     options.modal = true;
   }
   newGuest = new BrowserWindow(options);
+  trackAppWindow(newGuest);
   newGuest.once('ready-to-show', () => {
     newGuest.show();
   });
@@ -787,10 +813,9 @@ app.on('ready', () => {
 
 // Quit when all windows are closed.
 app.on('window-all-closed', function () {
-  if (mainWindow) {
-    e.preventDefault();
-    mainWindow.webContents.send('app-close-window');
-  }
+  // Reached after the main window is gone and the last session app window
+  // closes (a live main window never closes without its own quit path).
+  app.quit();
 });
 
 app.on('activate', function () {
