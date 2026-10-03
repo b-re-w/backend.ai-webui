@@ -56,6 +56,7 @@ const BAICodeEditor: React.FC<BAICodeEditorProps> = ({
   height = 200,
   style,
   options,
+  onMount,
   ...editorProps
 }) => {
   'use memo';
@@ -93,7 +94,16 @@ const BAICodeEditor: React.FC<BAICodeEditorProps> = ({
           height={height}
           theme={isDarkMode ? 'vs-dark' : 'vs'}
           value={script}
-          onChange={(v: string | undefined) => setScript(v ?? '')}
+          // Monaco gives new models the OS line ending (CRLF on Windows), so a
+          // script edited on Windows was saved with \r\n and broke in Linux
+          // containers. Keep LF in the model and in what we hand back.
+          onMount={(editor, monaco) => {
+            editor.getModel()?.setEOL(monaco.editor.EndOfLineSequence.LF);
+            onMount?.(editor, monaco);
+          }}
+          onChange={(v: string | undefined) =>
+            setScript((v ?? '').replace(/\r\n?/g, '\n'))
+          }
           loading={loadingFallback}
           options={{
             readOnly: !editable,
