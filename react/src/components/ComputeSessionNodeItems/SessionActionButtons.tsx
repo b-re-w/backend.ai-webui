@@ -103,6 +103,7 @@ const SessionActionButtons: React.FC<SessionActionButtonsProps> = ({
         service_ports
         commit_status
         user_id
+        permissions
         ...TerminateSessionModalFragment
         ...ContainerLogModalFragment
         ...ContainerCommitModalFragment
@@ -125,6 +126,13 @@ const SessionActionButtons: React.FC<SessionActionButtonsProps> = ({
 
   const userInfo = useCurrentUserInfo();
   const isOwner = userInfo[0]?.uuid === session?.user_id;
+  // Session sharing (BEP-1073): an invitee may open apps but does not own the session.
+  const sessionPermissions = session?.permissions ?? [];
+  const canOpenApps = isOwner || sessionPermissions.includes('start_app');
+  const isSharedWithMe =
+    !isOwner &&
+    sessionPermissions.includes('start_app') &&
+    !sessionPermissions.includes('delete_session');
 
   const hiddenButtons = React.useMemo(
     () => new Set(hiddenButtonKeys ?? []),
@@ -202,7 +210,7 @@ const SessionActionButtons: React.FC<SessionActionButtonsProps> = ({
                   size={size}
                   type={'primary'}
                   disabled={
-                    !isAppSupported(session) || !isActive(session) || !isOwner
+                    !isAppSupported(session) || !isActive(session) || !canOpenApps
                   }
                   icon={<BAIJupyterIcon />}
                   onClick={() => {
@@ -232,7 +240,7 @@ const SessionActionButtons: React.FC<SessionActionButtonsProps> = ({
                   size={size}
                   type={'primary'}
                   disabled={
-                    !isAppSupported(session) || !isActive(session) || !isOwner
+                    !isAppSupported(session) || !isActive(session) || !canOpenApps
                   }
                   icon={<BAIFileBrowserIcon />}
                   onClick={() => {
@@ -259,7 +267,7 @@ const SessionActionButtons: React.FC<SessionActionButtonsProps> = ({
                 size={size}
                 type={primaryAppOption ? undefined : 'primary'}
                 disabled={
-                  !isAppSupported(session) || !isActive(session) || !isOwner
+                  !isAppSupported(session) || !isActive(session) || !canOpenApps
                 }
                 icon={<BAIAppIcon />}
                 onClick={() => {
@@ -296,7 +304,7 @@ const SessionActionButtons: React.FC<SessionActionButtonsProps> = ({
               <Button
                 size={size}
                 disabled={
-                  !isAppSupported(session) || !isActive(session) || !isOwner
+                  !isAppSupported(session) || !isActive(session) || !canOpenApps
                 }
                 icon={<BAITerminalAppIcon />}
                 onClick={() => {
@@ -363,11 +371,14 @@ const SessionActionButtons: React.FC<SessionActionButtonsProps> = ({
           >
             <Button
               size={size}
-              disabled={!isActive(session)}
+              disabled={!isActive(session) || isSharedWithMe}
               icon={
                 <BAITerminateIcon
                   style={{
-                    color: isActive(session) ? token.colorError : undefined,
+                    color:
+                      isActive(session) && !isSharedWithMe
+                        ? token.colorError
+                        : undefined,
                   }}
                 />
               }

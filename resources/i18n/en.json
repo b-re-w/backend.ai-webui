@@ -2604,6 +2604,25 @@
     "PendingSessions": "Pending Sessions"
   },
   "session": {
+    "share": {
+      "Title": "Share session",
+      "Warning": "Invitees use this session as you: they can open its apps, see its files and mounted folders, and run code in it. Only members of the session's project can be invited, and sharing ends when the session ends.",
+      "InviteeEmail": "Invitee email",
+      "EmailRequired": "Enter the email of a project member.",
+      "LevelApp": "View and open apps",
+      "LevelExecute": "Apps and code execution",
+      "Invite": "Invite",
+      "Invitee": "Invitee",
+      "Level": "Access",
+      "NoInvitees": "Not shared with anyone",
+      "Unshare": "Stop sharing",
+      "ConfirmUnshare": "Stop sharing with {{email}}? Their open apps are closed.",
+      "Shared": "Shared with {{email}}",
+      "Unshared": "Stopped sharing with {{email}}",
+      "Failed": "Could not update sharing.",
+      "Share": "Share",
+      "SharedWithYou": "Shared with you"
+    },
     "ActiveSessions": "Active Sessions",
     "Agent": "Agent",
     "AgentId": "Agent ID",

@@ -2619,6 +2619,25 @@
     "PendingSessions": "대기 세션"
   },
   "session": {
+    "share": {
+      "Title": "세션 공유",
+      "Warning": "초대받은 사람은 이 세션을 내 권한으로 사용합니다. 앱을 열고, 파일과 연결된 폴더를 보고, 코드를 실행할 수 있습니다. 세션이 속한 프로젝트의 멤버만 초대할 수 있고, 세션이 끝나면 공유도 끝납니다.",
+      "InviteeEmail": "초대할 사람의 이메일",
+      "EmailRequired": "프로젝트 멤버의 이메일을 입력하세요.",
+      "LevelApp": "보기와 앱 열기",
+      "LevelExecute": "앱과 코드 실행",
+      "Invite": "초대",
+      "Invitee": "초대받은 사람",
+      "Level": "권한",
+      "NoInvitees": "공유한 사람이 없습니다",
+      "Unshare": "공유 해제",
+      "ConfirmUnshare": "{{email}}과의 공유를 해제할까요? 열려 있던 앱도 닫힙니다.",
+      "Shared": "{{email}}에게 공유했습니다",
+      "Unshared": "{{email}}과의 공유를 해제했습니다",
+      "Failed": "공유를 변경하지 못했습니다.",
+      "Share": "공유",
+      "SharedWithYou": "공유받은 세션"
+    },
     "ActiveSessions": "활성 세션",
     "Agent": "실행 노드",
     "AgentId": "에이전트 ID",

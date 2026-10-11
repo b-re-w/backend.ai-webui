@@ -24,6 +24,7 @@ import SessionIdleChecks, {
   IdleChecks,
 } from './ComputeSessionNodeItems/SessionIdleChecks';
 import SessionReservation from './ComputeSessionNodeItems/SessionReservation';
+import SessionShareModal from './ComputeSessionNodeItems/SessionShareModal';
 import SessionStatusDetailModal from './ComputeSessionNodeItems/SessionStatusDetailModal';
 import SessionStatusTag from './ComputeSessionNodeItems/SessionStatusTag';
 import IdleCheckDescriptionModal from './IdleCheckDescriptionModal';
@@ -74,6 +75,7 @@ import {
   BAIButton,
 } from 'backend.ai-ui';
 import * as _ from 'lodash-es';
+import { UsersIcon } from 'lucide-react';
 import { Suspense, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -134,6 +136,7 @@ const SessionDetailContent: React.FC<{
 
   const [openIdleCheckDescriptionModal, setOpenIdleCheckDescriptionModal] =
     useState<boolean>(false);
+  const [openShareModal, setOpenShareModal] = useState<boolean>(false);
   const [openStatusDetailModal, setOpenStatusDetailModal] =
     useState<boolean>(false);
   const [usageMonitorDisplayTarget, setUsageMonitorDisplayTarget] = useState<
@@ -193,6 +196,7 @@ const SessionDetailContent: React.FC<{
         name
         project_id
         user_id
+        permissions
         owner @since(version: "25.13.0") {
           email
         }
@@ -274,6 +278,17 @@ const SessionDetailContent: React.FC<{
   );
 
   const labGpuInfo = useLabGpuSessionInfo(session);
+
+  // Session sharing (BEP-1073): the owner, admins and project admins manage
+  // invitees (the manager enforces who may); an invitee sees a marker.
+  const isOwner = currentUser?.uuid === session.user_id;
+  const sessionPermissions = session.permissions ?? [];
+  const isSharedWithMe =
+    !isOwner &&
+    sessionPermissions.includes('start_app') &&
+    !sessionPermissions.includes('delete_session');
+  const canManageShares =
+    isOwner || userRole === 'admin' || userRole === 'superadmin';
 
   // The feature to display imminent expiration time as a separate Alert is supported from version 24.12.
   const imminentExpirationTime = _.min(
@@ -392,8 +407,40 @@ const SessionDetailContent: React.FC<{
               !['TERMINATED', 'CANCELLED'].includes(session.status || '')
             }
           />
-          <SessionActionButtons size={'large'} compact sessionFrgmt={session} />
+          <BAIFlex gap={'xs'} align="center">
+            {isSharedWithMe && (
+              <Tag color="blue">{t('session.share.SharedWithYou')}</Tag>
+            )}
+            {canManageShares && (
+              <Tooltip title={t('session.share.Share')}>
+                <Button
+                  size={'large'}
+                  icon={<UsersIcon />}
+                  aria-label={t('session.share.Share')}
+                  disabled={
+                    session.type !== 'interactive' ||
+                    ['TERMINATING', 'TERMINATED', 'CANCELLED', 'ERROR'].includes(
+                      session.status || '',
+                    )
+                  }
+                  onClick={() => setOpenShareModal(true)}
+                />
+              </Tooltip>
+            )}
+            <SessionActionButtons
+              size={'large'}
+              compact
+              sessionFrgmt={session}
+            />
+          </BAIFlex>
         </BAIFlex>
+        {canManageShares && session.row_id && (
+          <SessionShareModal
+            open={openShareModal}
+            sessionId={session.row_id}
+            onRequestClose={() => setOpenShareModal(false)}
+          />
+        )}
 
         <Descriptions
           bordered
