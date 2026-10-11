@@ -103,7 +103,7 @@ const SessionActionButtons: React.FC<SessionActionButtonsProps> = ({
         service_ports
         commit_status
         user_id
-        permissions
+        session_permissions: permissions
         ...TerminateSessionModalFragment
         ...ContainerLogModalFragment
         ...ContainerCommitModalFragment
@@ -127,7 +127,7 @@ const SessionActionButtons: React.FC<SessionActionButtonsProps> = ({
   const userInfo = useCurrentUserInfo();
   const isOwner = userInfo[0]?.uuid === session?.user_id;
   // Session sharing (BEP-1073): an invitee may open apps but does not own the session.
-  const sessionPermissions = session?.permissions ?? [];
+  const sessionPermissions = session?.session_permissions ?? [];
   const canOpenApps = isOwner || sessionPermissions.includes('start_app');
   const isSharedWithMe =
     !isOwner &&

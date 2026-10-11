@@ -196,7 +196,7 @@ const SessionDetailContent: React.FC<{
         name
         project_id
         user_id
-        permissions
+        session_permissions: permissions
         owner @since(version: "25.13.0") {
           email
         }
@@ -282,7 +282,7 @@ const SessionDetailContent: React.FC<{
   // Session sharing (BEP-1073): the owner, admins and project admins manage
   // invitees (the manager enforces who may); an invitee sees a marker.
   const isOwner = currentUser?.uuid === session.user_id;
-  const sessionPermissions = session.permissions ?? [];
+  const sessionPermissions = session.session_permissions ?? [];
   const isSharedWithMe =
     !isOwner &&
     sessionPermissions.includes('start_app') &&
