@@ -1816,11 +1816,24 @@
   },
   "labgpu": {
     "GpuLending": "GPU lending",
+    "Lendable": "Can lend",
+    "LendableGpus": "The owner is idle, so spot jobs can use {{lendable}} of {{total}} GPU(s)",
     "Lent": "Lent",
     "LentFor": "for {{hours}}h {{minutes}}m (since {{since}})",
     "LentGpus": "{{lent}} of {{total}} GPU(s) lent to spot jobs",
     "NotLent": "Not lent",
-    "Ports": "Ports"
+    "Ports": "Ports",
+    "SpotHeld": "Held",
+    "SpotHeldDetail": "Paused for using a GPU it was not given. It is not resumed automatically; ask an administrator",
+    "SpotIdle": "No GPU work",
+    "SpotIdleDetail": "No program is using the GPU yet",
+    "SpotOom": "Taken back",
+    "SpotOomDetail": "No GPU to move to, so it got an out-of-memory error. Save your work",
+    "SpotParked": "Taken back",
+    "SpotParkedDetail": "The owner needed the GPU, so the job is paused. It resumes by itself when a GPU frees up",
+    "SpotRunning": "Running",
+    "SpotRunningDetail": "Running on the borrowed GPU",
+    "SpotStatus": "Spot status"
   },
   "language": {
     "Brazilian": "brasileiro",
@@ -2604,25 +2617,6 @@
     "PendingSessions": "Pending Sessions"
   },
   "session": {
-    "share": {
-      "Title": "Share session",
-      "Warning": "Invitees use this session as you: they can open its apps, see its files and mounted folders, and run code in it. Only members of the session's project can be invited, and sharing ends when the session ends.",
-      "InviteeEmail": "Invitee email",
-      "EmailRequired": "Enter the email of a project member.",
-      "LevelApp": "View and open apps",
-      "LevelExecute": "Apps and code execution",
-      "Invite": "Invite",
-      "Invitee": "Invitee",
-      "Level": "Access",
-      "NoInvitees": "Not shared with anyone",
-      "Unshare": "Stop sharing",
-      "ConfirmUnshare": "Stop sharing with {{email}}? Their open apps are closed.",
-      "Shared": "Shared with {{email}}",
-      "Unshared": "Stopped sharing with {{email}}",
-      "Failed": "Could not update sharing.",
-      "Share": "Share",
-      "SharedWithYou": "Shared with you"
-    },
     "ActiveSessions": "Active Sessions",
     "Agent": "Agent",
     "AgentId": "Agent ID",
@@ -3018,6 +3012,25 @@
       "VFolderNotFound": "VFolder not found",
       "Version": "Version",
       "YouCanStartWithHistory": "These are your recently created session records. Click a session name to start a new session."
+    },
+    "share": {
+      "ConfirmUnshare": "Stop sharing with {{email}}? Their open apps are closed.",
+      "EmailRequired": "Enter the email of a project member.",
+      "Failed": "Could not update sharing.",
+      "Invite": "Invite",
+      "Invitee": "Invitee",
+      "InviteeEmail": "Invitee email",
+      "Level": "Access",
+      "LevelApp": "View and open apps",
+      "LevelExecute": "Apps and code execution",
+      "NoInvitees": "Not shared with anyone",
+      "Share": "Share",
+      "Shared": "Shared with {{email}}",
+      "SharedWithYou": "Shared with you",
+      "Title": "Share session",
+      "Unshare": "Stop sharing",
+      "Unshared": "Stopped sharing with {{email}}",
+      "Warning": "Invitees use this session as you: they can open its apps, see its files and mounted folders, and run code in it. Only members of the session's project can be invited, and sharing ends when the session ends."
     },
     "validation": {
       "EnterValidSessionName": "Please enter a combination of at least 4 alphabet letters, or numbers, or hyphen, or underscore.",

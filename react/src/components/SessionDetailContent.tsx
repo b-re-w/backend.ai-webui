@@ -33,6 +33,7 @@ import { UNSAFELazySessionImageTag } from './ImageTags';
 import {
   LabGpuSessionLending,
   LabGpuSessionPorts,
+  LabGpuSpotStatus,
   useLabGpuSessionInfo,
 } from './LabGpuSessionInfo';
 import MountedVFolderLinks from './MountedVFolderLinks';
@@ -419,9 +420,12 @@ const SessionDetailContent: React.FC<{
                   aria-label={t('session.share.Share')}
                   disabled={
                     session.type !== 'interactive' ||
-                    ['TERMINATING', 'TERMINATED', 'CANCELLED', 'ERROR'].includes(
-                      session.status || '',
-                    )
+                    [
+                      'TERMINATING',
+                      'TERMINATED',
+                      'CANCELLED',
+                      'ERROR',
+                    ].includes(session.status || '')
                   }
                   onClick={() => setOpenShareModal(true)}
                 />
@@ -577,6 +581,11 @@ const SessionDetailContent: React.FC<{
           {labGpuInfo.lending && (
             <Descriptions.Item label={t('labgpu.GpuLending')}>
               <LabGpuSessionLending lending={labGpuInfo.lending} />
+            </Descriptions.Item>
+          )}
+          {labGpuInfo.spot && (
+            <Descriptions.Item label={t('labgpu.SpotStatus')}>
+              <LabGpuSpotStatus spot={labGpuInfo.spot} />
             </Descriptions.Item>
           )}
           <Descriptions.Item label={t('session.Reservation')}>
