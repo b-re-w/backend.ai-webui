@@ -36,7 +36,8 @@ class BackendAISettingsStore {
   options: Record<string, any> = {
     'user.desktop_notification': true,
     'user.compact_sidebar': false,
-    'user.preserve_login': false,
+    'user.preserve_login': true,
+    'user.open_links_externally': true,
     'user.automatic_update_check': true,
     'user.custom_ssh_port': '',
     'user.beta_feature': false,

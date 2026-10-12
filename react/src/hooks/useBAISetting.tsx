@@ -19,6 +19,7 @@ export interface UserSettings {
   desktop_notification?: boolean;
   compact_sidebar?: boolean;
   preserve_login?: boolean;
+  open_links_externally?: boolean;
   automatic_update_check?: boolean;
   custom_ssh_port?: string;
   beta_feature?: boolean;

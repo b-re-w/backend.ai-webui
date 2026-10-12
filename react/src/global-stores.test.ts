@@ -45,8 +45,8 @@ describe('BackendAISettingsStore', () => {
       expect(backendaiOptions.get('compact_sidebar')).toBe(false);
     });
 
-    it('has user.preserve_login defaulting to false', () => {
-      expect(backendaiOptions.get('preserve_login')).toBe(false);
+    it('has user.preserve_login defaulting to true', () => {
+      expect(backendaiOptions.get('preserve_login')).toBe(true);
     });
 
     it('has user.automatic_update_check defaulting to true', () => {

@@ -124,6 +124,78 @@ function trackAppWindow(win) {
   appWindows.add(win);
   win.on('closed', () => appWindows.delete(win));
 }
+
+// Links to sites outside the cluster open in the default browser (user setting,
+// on by default). Session apps and their own pages stay in app windows: only the
+// app holds their proxy login. The WebUI reports the setting and the API
+// endpoint host; app proxies serve apps on that host or its subdomains.
+const desktopSettings = { openLinksExternally: true, endpointHost: '' };
+let desktopSettingsLoaded = false;
+function desktopSettingsPath() {
+  return path.join(app.getPath('userData'), 'lab-desktop-settings.json');
+}
+function loadDesktopSettings() {
+  if (desktopSettingsLoaded) return;
+  desktopSettingsLoaded = true;
+  try {
+    const saved = JSON.parse(nfs.readFileSync(desktopSettingsPath(), 'utf8'));
+    if (typeof saved.openLinksExternally === 'boolean') {
+      desktopSettings.openLinksExternally = saved.openLinksExternally;
+    }
+    if (typeof saved.endpointHost === 'string') {
+      desktopSettings.endpointHost = saved.endpointHost;
+    }
+  } catch (e) {
+    // First run or unreadable: keep the defaults.
+  }
+}
+function updateDesktopSettings(next) {
+  loadDesktopSettings();
+  if (typeof next?.openLinksExternally === 'boolean') {
+    desktopSettings.openLinksExternally = next.openLinksExternally;
+  }
+  if (typeof next?.endpointHost === 'string') {
+    desktopSettings.endpointHost = next.endpointHost;
+  }
+  try {
+    nfs.writeFileSync(desktopSettingsPath(), JSON.stringify(desktopSettings));
+  } catch (e) {
+    // The setting still applies until the app quits.
+  }
+}
+function opensExternally(target, openerURL) {
+  loadDesktopSettings();
+  if (!desktopSettings.openLinksExternally) return false;
+  let link;
+  try {
+    link = new URL(target);
+  } catch (e) {
+    return false;
+  }
+  if (link.protocol === 'mailto:') return true;
+  if (link.protocol !== 'http:' && link.protocol !== 'https:') return false;
+  const base = desktopSettings.endpointHost;
+  // Before the WebUI reports its endpoint, apps cannot be told from sites.
+  if (!base) return false;
+  const host = link.hostname;
+  if (['localhost', '127.0.0.1', '[::1]'].includes(host)) return false; // local proxy
+  if (host === base || host.endsWith('.' + base)) return false;
+  try {
+    if (openerURL && new URL(openerURL).origin === link.origin) return false;
+  } catch (e) {
+    // An opener without a parsable URL: judge by the host alone.
+  }
+  return true;
+}
+// window.open from any of our windows: sites go to the default browser, the
+// rest to a new app window.
+function openWindow(details, opener) {
+  if (opensExternally(details.url, opener?.isDestroyed() ? '' : opener?.getURL())) {
+    shell.openExternal(details.url);
+    return { action: 'deny' };
+  }
+  return newPopupWindow(details);
+}
 let mainContent;
 let devtools;
 const manager = new ProxyManager();
@@ -520,9 +592,8 @@ function createWindow() {
     devtools = null;
   });
 
-  mainWindow.webContents.setWindowOpenHandler((details) => {
-    return newPopupWindow(details);
-  });
+  const mainContents = mainWindow.webContents;
+  mainContents.setWindowOpenHandler((details) => openWindow(details, mainContents));
 }
 
 // Registered once: the main window can be created again (second launch) and
@@ -533,6 +604,7 @@ function registerMainWindowIpc() {
   mainWindowIpcRegistered = true;
   // The WebUI header tells us its colors so the overlay buttons match it (and
   // follow the light/dark theme).
+  ipcMain.on('desktop-settings', (_event, next) => updateDesktopSettings(next));
   ipcMain.on('title-bar-overlay', (event, colors) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (!useTitleBarOverlay || !win || typeof win.setTitleBarOverlay !== 'function') {
@@ -685,8 +757,8 @@ function newAppWindow(details) {
     }
   };
   view.webContents.on('page-title-updated', (_event, title) => setTitle(title));
-  view.webContents.setWindowOpenHandler((d) => newPopupWindow(d));
-  win.webContents.setWindowOpenHandler((d) => newPopupWindow(d));
+  view.webContents.setWindowOpenHandler((d) => openWindow(d, view.webContents));
+  win.webContents.setWindowOpenHandler((d) => openWindow(d, win.webContents));
 
   // PWA with Window Controls Overlay: hand the whole window to the app, which
   // then draws its own title bar around the native buttons.
@@ -767,9 +839,8 @@ function newPopupWindow(details) {
     newGuest.webContents.setDevToolsWebContents(devtools.webContents);
     newGuest.webContents.openDevTools({ mode: 'detach' });
   }
-  newGuest.webContents.setWindowOpenHandler((details) => {
-    return newPopupWindow(details);
-  });
+  const guestContents = newGuest.webContents;
+  guestContents.setWindowOpenHandler((details) => openWindow(details, guestContents));
   newGuest.on('close', (e) => {
     const c = BrowserWindow.getFocusedWindow();
     if (c !== null) {

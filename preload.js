@@ -7,6 +7,11 @@ contextBridge.exposeInMainWorld('__titleBarOverlay', {
   setColors: (colors) => ipcRenderer.send('title-bar-overlay', colors),
 });
 
+// Desktop-only settings the main process needs (links in the default browser).
+contextBridge.exposeInMainWorld('__labDesktop', {
+  setSettings: (settings) => ipcRenderer.send('desktop-settings', settings),
+});
+
 process.once('loaded', () => {
   ipcRenderer.on('proxy-ready', (event, proxy_url) => {
 	contextBridge.exposeInMainWorld('__local_proxy', {

@@ -17,6 +17,7 @@ import { commonAppProps } from '../DefaultProviders';
 import DevApiEndpointMismatchAlert from '../DevApiEndpointMismatchAlert';
 import ErrorBoundaryWithNullFallback from '../ErrorBoundaryWithNullFallback';
 import ForceTOTPChecker from '../ForceTOTPChecker';
+import LabDesktopSettingsSync from '../LabDesktopSettingsSync';
 import LabGpuSpotWatcher from '../LabGpuSpotWatcher';
 import NetworkStatusBanner from '../NetworkStatusBanner';
 import NoResourceGroupAlert from '../NoResourceGroupAlert';
@@ -326,6 +327,9 @@ function MainLayout() {
                   </ErrorBoundaryWithNullFallback>
                   <ErrorBoundaryWithNullFallback>
                     <LabGpuSpotWatcher />
+                  </ErrorBoundaryWithNullFallback>
+                  <ErrorBoundaryWithNullFallback>
+                    <LabDesktopSettingsSync />
                   </ErrorBoundaryWithNullFallback>
                 </BAIErrorBoundary>
               </BAIFlex>

@@ -122,6 +122,9 @@ const UserPreferencesPage = () => {
   ] = useToggle(false);
   const [preserveLogin, setPreserveLogin] =
     useBAISettingUserState('preserve_login');
+  const [openLinksExternally, setOpenLinksExternally] = useBAISettingUserState(
+    'open_links_externally',
+  );
   const [experimentalAIAgents, setExperimentalAIAgents] =
     useBAISettingUserState('experimental_ai_agents');
   const [
@@ -335,9 +338,18 @@ const UserPreferencesPage = () => {
           description: (
             <Trans i18nKey="userSettings.DescKeepLoginSessionInformation" />
           ),
-          defaultValue: false,
+          defaultValue: true,
           value: preserveLogin,
           onChange: setPreserveLogin,
+        },
+        globalThis.isElectron && {
+          'data-testid': 'items-open-links-externally',
+          type: 'checkbox',
+          title: t('userSettings.OpenLinksExternally'),
+          description: t('userSettings.DescOpenLinksExternally'),
+          defaultValue: true,
+          value: openLinksExternally,
+          onChange: setOpenLinksExternally,
         },
         {
           'data-testid': 'items-automatic-update-check',
