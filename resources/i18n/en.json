@@ -1822,6 +1822,7 @@
     "LentFor": "for {{hours}}h {{minutes}}m (since {{since}})",
     "LentGpus": "{{lent}} of {{total}} GPU(s) lent to spot jobs",
     "NotLent": "Not lent",
+    "OpenSession": "Open session",
     "Ports": "Ports",
     "SpotHeld": "Held",
     "SpotHeldDetail": "Paused for using a GPU it was not given. It is not resumed automatically; ask an administrator",
@@ -1831,6 +1832,8 @@
     "SpotOomDetail": "No GPU to move to, so it got an out-of-memory error. Save your work",
     "SpotParked": "Taken back",
     "SpotParkedDetail": "The owner needed the GPU, so the job is paused. It resumes by itself when a GPU frees up",
+    "SpotResumed": "Running again",
+    "SpotResumedDetail": "Moved to a free GPU and resumed where it stopped",
     "SpotRunning": "Running",
     "SpotRunningDetail": "Running on the borrowed GPU",
     "SpotStatus": "Spot status"

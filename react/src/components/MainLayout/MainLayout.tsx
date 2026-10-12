@@ -17,6 +17,7 @@ import { commonAppProps } from '../DefaultProviders';
 import DevApiEndpointMismatchAlert from '../DevApiEndpointMismatchAlert';
 import ErrorBoundaryWithNullFallback from '../ErrorBoundaryWithNullFallback';
 import ForceTOTPChecker from '../ForceTOTPChecker';
+import LabGpuSpotWatcher from '../LabGpuSpotWatcher';
 import NetworkStatusBanner from '../NetworkStatusBanner';
 import NoResourceGroupAlert from '../NoResourceGroupAlert';
 import PasswordChangeRequestAlert from '../PasswordChangeRequestAlert';
@@ -295,7 +296,8 @@ function MainLayout() {
                             style={{
                               marginBottom: token.marginMD,
                               marginLeft: token.paddingContentHorizontalLG * -1,
-                              marginRight: token.paddingContentHorizontalLG * -1,
+                              marginRight:
+                                token.paddingContentHorizontalLG * -1,
                             }}
                           />
                         )}
@@ -321,6 +323,9 @@ function MainLayout() {
                   </Suspense>
                   <ErrorBoundaryWithNullFallback>
                     <PluginLoader />
+                  </ErrorBoundaryWithNullFallback>
+                  <ErrorBoundaryWithNullFallback>
+                    <LabGpuSpotWatcher />
                   </ErrorBoundaryWithNullFallback>
                 </BAIErrorBoundary>
               </BAIFlex>
