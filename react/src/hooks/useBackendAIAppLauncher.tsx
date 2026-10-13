@@ -1164,12 +1164,30 @@ function getAppProxyErrorMessage(
     }
   }
   if (typeof body === 'string' && body.length > 0) {
-    return body;
+    return textFromHtmlErrorPage(body) ?? body;
   }
   if (response.statusText && response.statusText.length > 0) {
     return response.statusText;
   }
   return fallback;
+}
+
+/**
+ * The readable part of an HTML error page, or null when `body` is not HTML. The desktop
+ * app's local proxy answers a failed app connection with a full HTML page ("Server
+ * connection failed / 502 Error"), which was shown to the user as raw markup.
+ */
+export function textFromHtmlErrorPage(body: string): string | null {
+  if (!/^\s*</.test(body)) return null;
+  const doc = new DOMParser().parseFromString(body, 'text/html');
+  const parts = Array.from(doc.querySelectorAll('h2, h3, p'))
+    .map((element) => element.textContent?.replace(/\s+/g, ' ').trim())
+    .filter((text): text is string => !!text);
+  const text =
+    parts.length > 0
+      ? parts.join(': ')
+      : (doc.body?.textContent ?? '').replace(/\s+/g, ' ').trim();
+  return text.length > 0 ? text : null;
 }
 
 // A stale or dead local wsproxy gateway (see `manager.js`'s `/add` route)
