@@ -5,10 +5,11 @@
 import { EditableSessionNameFragment$key } from '../../__generated__/EditableSessionNameFragment.graphql';
 import { EditableSessionNameRefetchQuery } from '../../__generated__/EditableSessionNameRefetchQuery.graphql';
 import { useBaiSignedRequestWithPromise } from '../../helper';
-import { useCurrentUserInfo } from '../../hooks/backendai';
-import { useTanMutation } from '../../hooks/reactQueryAlias';
+import { useCurrentUserInfo, useCurrentUserRole } from '../../hooks/backendai';
+import { useTanMutation, useTanQuery } from '../../hooks/reactQueryAlias';
 import { useValidateSessionName } from '../../hooks/useValidateSessionName';
 import { theme, Form, Input, App, type GetProps, Typography } from 'antd';
+import { useBAISignedRequestWithPromise } from 'backend.ai-ui';
 import { CornerDownLeftIcon } from 'lucide-react';
 import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -60,10 +61,39 @@ const EditableSessionName: React.FC<EditableSessionNameProps> = ({
   const [optimisticName, setOptimisticName] = useState(session.name);
   const validationRules = useValidateSessionName(optimisticName);
   const [userInfo] = useCurrentUserInfo();
+  const userRole = useCurrentUserRole();
+  const isOwner = userInfo.uuid === session.user_id;
+  const isAdmin = userRole === 'admin' || userRole === 'superadmin';
 
   const baiRequestWithPromise = useBaiSignedRequestWithPromise();
+  const baiV2RequestWithPromise = useBAISignedRequestWithPromise();
+  // Lab: admins may rename other users' sessions only when the manager allows it
+  // (session.allow-admin-rename, off unless set to true).
+  const { data: renamePolicy } = useTanQuery<{ admin_rename_enabled: boolean }>(
+    {
+      queryKey: ['sessionRenamePolicy'],
+      queryFn: () =>
+        baiV2RequestWithPromise({
+          method: 'GET',
+          url: '/v2/sessions/policies/rename',
+        }),
+      enabled: isAdmin && !isOwner,
+      staleTime: 60_000,
+    },
+  );
+  const canRenameAsAdmin =
+    !isOwner && isAdmin && renamePolicy?.admin_rename_enabled === true;
+
   const renameSessionMutation = useTanMutation({
     mutationFn: (newName: string) => {
+      if (!isOwner) {
+        // Another user's session: by id, which the manager resolves for admins.
+        return baiV2RequestWithPromise({
+          method: 'PATCH',
+          url: `/v2/sessions/${session.row_id}`,
+          body: { name: newName },
+        });
+      }
       return baiRequestWithPromise({
         method: 'POST',
         url: `/session/${session.name}/rename`,
@@ -89,7 +119,7 @@ const EditableSessionName: React.FC<EditableSessionNameProps> = ({
 
   const isEditingAllowed =
     editableOfProps &&
-    userInfo.uuid === session.user_id &&
+    (isOwner || canRenameAsAdmin) &&
     isNotPreparingCategoryStatus;
 
   const isPendingRenamingAndRefreshing =
