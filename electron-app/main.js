@@ -797,6 +797,20 @@ function registerMainWindowIpc() {
     updateDesktopSettings(next);
     checkForUpdates();
   });
+  // A URL a program in a session asked to open (backend.ai-plugin SPEC 1.14):
+  // web and mail links only. Registered once even if the main window is recreated.
+  ipcMain.removeAllListeners('lab-open-external');
+  ipcMain.on('lab-open-external', (_event, target) => {
+    let link;
+    try {
+      link = new URL(String(target));
+    } catch (e) {
+      return;
+    }
+    if (['http:', 'https:', 'mailto:'].includes(link.protocol)) {
+      shell.openExternal(link.toString());
+    }
+  });
   ipcMain.on('title-bar-overlay', (event, colors) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (!useTitleBarOverlay || !win || typeof win.setTitleBarOverlay !== 'function') {

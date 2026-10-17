@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld('__titleBarOverlay', {
 // Desktop-only settings the main process needs (links in the default browser).
 contextBridge.exposeInMainWorld('__labDesktop', {
   setSettings: (settings) => ipcRenderer.send('desktop-settings', settings),
+  // URLs that programs in a session asked to open (backend.ai-plugin SPEC 1.14).
+  openExternal: (target) => ipcRenderer.send('lab-open-external', target),
 });
 
 process.once('loaded', () => {

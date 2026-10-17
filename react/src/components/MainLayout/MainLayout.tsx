@@ -18,6 +18,7 @@ import DevApiEndpointMismatchAlert from '../DevApiEndpointMismatchAlert';
 import ErrorBoundaryWithNullFallback from '../ErrorBoundaryWithNullFallback';
 import ForceTOTPChecker from '../ForceTOTPChecker';
 import LabDesktopSettingsSync from '../LabDesktopSettingsSync';
+import LabDesktopUrlRelay from '../LabDesktopUrlRelay';
 import LabGpuSpotWatcher from '../LabGpuSpotWatcher';
 import NetworkStatusBanner from '../NetworkStatusBanner';
 import NoResourceGroupAlert from '../NoResourceGroupAlert';
@@ -331,6 +332,11 @@ function MainLayout() {
                   <ErrorBoundaryWithNullFallback>
                     <LabDesktopSettingsSync />
                   </ErrorBoundaryWithNullFallback>
+                  {globalThis.isElectron && (
+                    <ErrorBoundaryWithNullFallback>
+                      <LabDesktopUrlRelay />
+                    </ErrorBoundaryWithNullFallback>
+                  )}
                 </BAIErrorBoundary>
               </BAIFlex>
             </BAIFlex>
