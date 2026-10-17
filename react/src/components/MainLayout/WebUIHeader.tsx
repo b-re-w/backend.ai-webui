@@ -347,10 +347,14 @@ const WebUIHeader: React.FC<WebUIHeaderProps> = ({ onClickMenuIcon }) => {
             </Suspense>
           )}
         <BAINotificationButton data-testid="button-notification" />
-        <ReverseThemeProvider>
-          <WebUIThemeToggleButton data-testid="button-theme" />
-          <WEBUIHelpButton data-testid="button-help" />
-        </ReverseThemeProvider>
+        {/* Lab: below `sm` the header does not fit a 360px phone with these two,
+            and the overflow gives the whole page horizontal and vertical scroll. */}
+        {gridBreakpoint.sm && (
+          <ReverseThemeProvider>
+            <WebUIThemeToggleButton data-testid="button-theme" />
+            <WEBUIHelpButton data-testid="button-help" />
+          </ReverseThemeProvider>
+        )}
         <UserDropdownMenu
           data-testid="dropdown-user-menu"
           buttonRender={(btn) => (
