@@ -13,7 +13,8 @@
 # Versioned release for auto-update: push a tag v<webui>-lab.<n> (e.g. v26.8.1-lab.1) or run
 # this workflow by hand with that version. The build then carries that version, adds the
 # Windows installer with latest.yml, and publishes it as a normal (latest) release that the
-# desktop app's update check reads. Plain develop pushes keep updating lab-develop only.
+# desktop app's update check reads. Plain develop pushes keep updating lab-develop only, built as
+# <newest lab version>.dev.<run number> (e.g. 26.8.1-lab.1.dev.42).
 name: Lab web bundle
 on:
   push:
@@ -38,6 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      build_version: ${{ steps.version.outputs.build_version }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -55,12 +57,22 @@ jobs:
             exit 1
           fi
           echo "version=$v" >> "$GITHUB_OUTPUT"
+          # Rolling builds sort just after the newest lab release (26.8.1-lab.1.dev.<run>),
+          # so a desktop app from lab-develop still updates to the next lab release.
+          if [ -z "$v" ]; then
+            last=$(git describe --tags --abbrev=0 --match 'v*-lab.*' 2>/dev/null || true)
+            if [ -n "$last" ]; then
+              v="${last#v}.dev.$GITHUB_RUN_NUMBER"
+            else
+              v="$(node -p "require('./package.json').version")-lab.0.dev.$GITHUB_RUN_NUMBER"
+            fi
+          fi
+          echo "build_version=$v" >> "$GITHUB_OUTPUT"
 
-      - name: Set release version
-        if: steps.version.outputs.version != ''
+      - name: Set build version
         run: |
-          npm pkg set version="${{ steps.version.outputs.version }}"
-          (cd electron-app && npm pkg set version="${{ steps.version.outputs.version }}")
+          npm pkg set version="${{ steps.version.outputs.build_version }}"
+          (cd electron-app && npm pkg set version="${{ steps.version.outputs.build_version }}")
 
       - uses: pnpm/action-setup@v5
         with:
@@ -109,11 +121,10 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Set release version
-        if: needs.web.outputs.version != ''
+      - name: Set build version
         run: |
-          npm pkg set version="${{ needs.web.outputs.version }}"
-          (cd electron-app && npm pkg set version="${{ needs.web.outputs.version }}")
+          npm pkg set version="${{ needs.web.outputs.build_version }}"
+          (cd electron-app && npm pkg set version="${{ needs.web.outputs.build_version }}")
 
       - uses: actions/download-artifact@v8
         with:
@@ -159,11 +170,10 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Set release version
-        if: needs.web.outputs.version != ''
+      - name: Set build version
         run: |
-          npm pkg set version="${{ needs.web.outputs.version }}"
-          (cd electron-app && npm pkg set version="${{ needs.web.outputs.version }}")
+          npm pkg set version="${{ needs.web.outputs.build_version }}"
+          (cd electron-app && npm pkg set version="${{ needs.web.outputs.build_version }}")
 
       - uses: actions/download-artifact@v8
         with:
