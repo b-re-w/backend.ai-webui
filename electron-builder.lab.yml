@@ -1,0 +1,20 @@
+# Lab fork: Windows NSIS installer for in-place auto-update.
+# Built on a Windows runner from the app that @electron/packager already produced
+# (see the windows-installer job in .github/workflows/lab-web-bundle.yml).
+# electron-updater in the app reads latest.yml from the fork's newest GitHub release.
+appId: ai.backend.desktop
+productName: Backend.AI Desktop
+# Keep latest.yml for lab versions (v26.8.1-lab.N) instead of a "lab" channel file.
+detectUpdateChannel: false
+publish:
+  provider: github
+  owner: b-re-w
+  repo: backend.ai-webui
+win:
+  target: nsis
+  icon: manifest/backend-ai.ico
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  artifactName: backend.ai-desktop-${version}-win-${arch}-setup.${ext}

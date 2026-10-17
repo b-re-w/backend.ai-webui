@@ -351,14 +351,14 @@ const UserPreferencesPage = () => {
           value: openLinksExternally,
           onChange: setOpenLinksExternally,
         },
-        {
+        globalThis.isElectron && {
           'data-testid': 'items-automatic-update-check',
           type: 'checkbox',
           title: t('userSettings.AutomaticUpdateCheck'),
           description: (
             <Trans i18nKey="userSettings.DescAutomaticUpdateCheck" />
           ),
-          defaultValue: false,
+          defaultValue: true,
           value: autoAutomaticUpdateCheck,
           onChange: setAutoAutomaticUpdateCheck,
         },

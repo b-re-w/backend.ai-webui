@@ -9,15 +9,26 @@
 # The macOS apps are signed ad hoc (the fork has no Apple Developer ID): on first launch
 # macOS shows "unidentified developer" until the user allows the app in System Settings >
 # Privacy & Security ("Open Anyway").
+#
+# Versioned release for auto-update: push a tag v<webui>-lab.<n> (e.g. v26.8.1-lab.1) or run
+# this workflow by hand with that version. The build then carries that version, adds the
+# Windows installer with latest.yml, and publishes it as a normal (latest) release that the
+# desktop app's update check reads. Plain develop pushes keep updating lab-develop only.
 name: Lab web bundle
 on:
   push:
     branches: [develop]
+    tags: ['v*-lab.*']
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version without the v (e.g. 26.8.1-lab.1). Empty: rolling lab-develop build.'
+        required: false
+        default: ''
 
 concurrency:
-  group: lab-web-bundle
-  cancel-in-progress: true
+  group: lab-web-bundle-${{ github.ref_type }}-${{ inputs.version || 'rolling' }}
+  cancel-in-progress: ${{ github.ref_type == 'branch' && !inputs.version }}
 
 env:
   NODE_OPTIONS: --max-old-space-size=4096
@@ -25,10 +36,31 @@ env:
 jobs:
   web:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0  # versiontag counts commits
+
+      - name: Resolve release version
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          v="$INPUT_VERSION"
+          if [ "$GITHUB_REF_TYPE" = tag ]; then v="${GITHUB_REF_NAME#v}"; fi
+          if [ -n "$v" ] && ! printf '%s' "$v" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-lab\.[0-9]+$'; then
+            echo "::error::Version must look like 26.8.1-lab.1, got '$v'"
+            exit 1
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - name: Set release version
+        if: steps.version.outputs.version != ''
+        run: |
+          npm pkg set version="${{ steps.version.outputs.version }}"
+          (cd electron-app && npm pkg set version="${{ steps.version.outputs.version }}")
 
       - uses: pnpm/action-setup@v5
         with:
@@ -77,6 +109,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Set release version
+        if: needs.web.outputs.version != ''
+        run: |
+          npm pkg set version="${{ needs.web.outputs.version }}"
+          (cd electron-app && npm pkg set version="${{ needs.web.outputs.version }}")
+
       - uses: actions/download-artifact@v8
         with:
           name: web-build
@@ -121,6 +159,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Set release version
+        if: needs.web.outputs.version != ''
+        run: |
+          npm pkg set version="${{ needs.web.outputs.version }}"
+          (cd electron-app && npm pkg set version="${{ needs.web.outputs.version }}")
+
       - uses: actions/download-artifact@v8
         with:
           name: web-build
@@ -146,8 +190,56 @@ jobs:
           path: app/backend.ai-desktop-*.dmg
           retention-days: 30
 
+  # Windows x64 installer for in-place updates, built from the packaged app. NSIS builds
+  # need Windows tools, so this runs on a Windows runner.
+  windows-installer:
+    needs: [web, desktop]
+    if: needs.web.outputs.version != ''
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6.4.0
+        with:
+          node-version-file: '.nvmrc'
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: desktop-win-linux
+          path: zips
+
+      - name: Build NSIS installer
+        env:
+          VERSION: ${{ needs.web.outputs.version }}
+        run: |
+          mkdir -p pre proj/manifest
+          7z x -y -opre "zips/backend.ai-desktop-$VERSION-win-x64.zip" > /dev/null
+          cp electron-app/package.json proj/
+          (cd proj && npm pkg set version="$VERSION")
+          cp manifest/backend-ai.ico proj/manifest/
+          electron_version=$(node -p "require('./package.json').devDependencies.electron.replace(/^[^0-9]*/, '')")
+          npx --yes electron-builder@26.15.3 --win nsis --x64 \
+            --prepackaged "$PWD/pre/Backend.AI Desktop-win32-x64" \
+            --projectDir "$PWD/proj" --config "$PWD/electron-builder.lab.yml" \
+            -c.electronVersion="$electron_version" \
+            -c.directories.output="$PWD/nsis" --publish never
+          ls -l nsis
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: desktop-win-installer
+          path: |
+            nsis/*-setup.exe
+            nsis/*-setup.exe.blockmap
+            nsis/latest.yml
+          retention-days: 30
+
   release:
-    needs: [web, desktop, mac]
+    needs: [web, desktop, mac, windows-installer]
+    if: ${{ !cancelled() && needs.web.result == 'success' && needs.desktop.result == 'success' && needs.mac.result == 'success' && (needs.windows-installer.result == 'success' || needs.windows-installer.result == 'skipped') }}
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -157,7 +249,25 @@ jobs:
           path: dist
           merge-multiple: true
 
+      - name: Publish versioned release
+        if: needs.web.outputs.version != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.web.outputs.version }}
+        run: |
+          ls -l dist
+          tag="v$VERSION"
+          notes="Lab release $tag from ${GITHUB_SHA::9}, built $(date -u +%Y-%m-%dT%H:%MZ)"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release edit "$tag" --prerelease=false --latest --notes "$notes"
+          else
+            gh release create "$tag" --target "$GITHUB_SHA" --title "$tag" --latest --notes "$notes"
+          fi
+          gh release upload "$tag" dist/*.zip dist/*.dmg dist/*-setup.exe dist/*-setup.exe.blockmap dist/latest.yml --clobber
+
       - name: Publish rolling pre-release lab-develop
+        if: needs.web.outputs.version == ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}

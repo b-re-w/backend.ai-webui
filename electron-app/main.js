@@ -129,7 +129,11 @@ function trackAppWindow(win) {
 // on by default). Session apps and their own pages stay in app windows: only the
 // app holds their proxy login. The WebUI reports the setting and the API
 // endpoint host; app proxies serve apps on that host or its subdomains.
-const desktopSettings = { openLinksExternally: true, endpointHost: '' };
+const desktopSettings = {
+  openLinksExternally: true,
+  endpointHost: '',
+  autoUpdate: true,
+};
 let desktopSettingsLoaded = false;
 function desktopSettingsPath() {
   return path.join(app.getPath('userData'), 'lab-desktop-settings.json');
@@ -145,6 +149,9 @@ function loadDesktopSettings() {
     if (typeof saved.endpointHost === 'string') {
       desktopSettings.endpointHost = saved.endpointHost;
     }
+    if (typeof saved.autoUpdate === 'boolean') {
+      desktopSettings.autoUpdate = saved.autoUpdate;
+    }
   } catch (e) {
     // First run or unreadable: keep the defaults.
   }
@@ -157,10 +164,80 @@ function updateDesktopSettings(next) {
   if (typeof next?.endpointHost === 'string') {
     desktopSettings.endpointHost = next.endpointHost;
   }
+  if (typeof next?.autoUpdate === 'boolean') {
+    desktopSettings.autoUpdate = next.autoUpdate;
+  }
   try {
     nfs.writeFileSync(desktopSettingsPath(), JSON.stringify(desktopSettings));
   } catch (e) {
     // The setting still applies until the app quits.
+  }
+}
+// Lab releases are published on the fork's GitHub releases as v<webui>-lab.<n>.
+// Windows installs from the NSIS installer update in place (electron-updater
+// reads latest.yml); other builds are told where to download the new version.
+const UPDATE_REPO = { owner: 'b-re-w', repo: 'backend.ai-webui' };
+let updateChecked = false;
+function checkForUpdates() {
+  loadDesktopSettings();
+  if (updateChecked || !desktopSettings.autoUpdate || isDev()) return;
+  updateChecked = true;
+  if (process.platform === 'win32') {
+    checkForWindowsUpdate();
+  } else {
+    notifyNewerRelease();
+  }
+}
+function checkForWindowsUpdate() {
+  let autoUpdater;
+  try {
+    ({ autoUpdater } = require('electron-updater'));
+  } catch (e) {
+    console.error('Update check skipped: electron-updater is missing', e);
+    return;
+  }
+  autoUpdater.setFeedURL({ provider: 'github', ...UPDATE_REPO });
+  autoUpdater.allowPrerelease = false;
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.on('error', (e) => console.error('Update check failed:', e));
+  autoUpdater.on('update-downloaded', async (info) => {
+    const { response } = await dialog.showMessageBox({
+      type: 'info',
+      buttons: ['Restart now', 'Later'],
+      defaultId: 0,
+      cancelId: 1,
+      message: `Backend.AI Desktop ${info.version} is ready to install.`,
+      detail: 'Restart now to update, or it installs when you quit the app.',
+    });
+    if (response === 0) autoUpdater.quitAndInstall();
+  });
+  autoUpdater
+    .checkForUpdates()
+    .catch((e) => console.error('Update check failed:', e));
+}
+async function notifyNewerRelease() {
+  try {
+    const semver = require('semver');
+    const res = await fetch(
+      `https://api.github.com/repos/${UPDATE_REPO.owner}/${UPDATE_REPO.repo}/releases/latest`,
+      { headers: { Accept: 'application/vnd.github+json' } },
+    );
+    if (!res.ok) throw new Error(`GitHub returned ${res.status}`);
+    const release = await res.json();
+    const latest = semver.valid(semver.clean(String(release.tag_name || '')));
+    if (!latest || !semver.gt(latest, app.getVersion())) return;
+    const { response } = await dialog.showMessageBox({
+      type: 'info',
+      buttons: ['Download', 'Later'],
+      defaultId: 0,
+      cancelId: 1,
+      message: `Backend.AI Desktop ${latest} is available.`,
+      detail: `You are running ${app.getVersion()}.`,
+    });
+    if (response === 0) shell.openExternal(release.html_url);
+  } catch (e) {
+    console.error('Update check failed:', e);
   }
 }
 function opensExternally(target, openerURL) {
@@ -604,7 +681,10 @@ function registerMainWindowIpc() {
   mainWindowIpcRegistered = true;
   // The WebUI header tells us its colors so the overlay buttons match it (and
   // follow the light/dark theme).
-  ipcMain.on('desktop-settings', (_event, next) => updateDesktopSettings(next));
+  ipcMain.on('desktop-settings', (_event, next) => {
+    updateDesktopSettings(next);
+    checkForUpdates();
+  });
   ipcMain.on('title-bar-overlay', (event, colors) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (!useTitleBarOverlay || !win || typeof win.setTitleBarOverlay !== 'function') {
