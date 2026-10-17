@@ -17,7 +17,7 @@ import {
 import { theme, Tooltip, Typography } from 'antd';
 import { BAIFlex, ResourceStatistics } from 'backend.ai-ui';
 import * as _ from 'lodash-es';
-import React from 'react';
+import React, { useEffect, useEffectEvent, useRef, useState } from 'react';
 
 type Amount = { current: number; total?: number };
 type DisplayType = 'used' | 'free';
@@ -56,6 +56,56 @@ const ColumnDivider: React.FC<{ color: string; gap: number }> = ({
     }}
   />
 );
+
+/**
+ * A grid whose columns are snapped to whole pixels. With content-sized columns the dividers land
+ * on fractional positions and render as lines of different thickness; measuring each column once
+ * and fixing it to the next whole pixel keeps every divider a crisp 1px.
+ */
+const ServerBlock: React.FC<{
+  columns: number;
+  contentKey: string;
+  style: React.CSSProperties;
+  children: React.ReactNode;
+}> = ({ columns, contentKey, style, children }) => {
+  'use memo';
+  const ref = useRef<HTMLDivElement>(null);
+  const [widths, setWidths] = useState<number[] | null>(null);
+  const measureOnChange = useEffectEvent(() => {
+    const measure = () => {
+      const el = ref.current;
+      if (!el) return;
+      setWidths(
+        _.map(_.take([...el.children], columns), (child) =>
+          Math.ceil(child.getBoundingClientRect().width),
+        ),
+      );
+    };
+    setWidths(null); // measure the natural widths first
+    requestAnimationFrame(measure);
+    document.fonts?.ready.then(() => {
+      setWidths(null);
+      requestAnimationFrame(measure);
+    });
+  });
+  useEffect(() => {
+    measureOnChange();
+  }, [contentKey, columns]);
+  return (
+    <div
+      ref={ref}
+      style={{
+        ...style,
+        display: 'grid',
+        gridTemplateColumns: widths
+          ? _.map(widths, (w) => `${w}px`).join(' ')
+          : `repeat(${columns}, max-content)`,
+      }}
+    >
+      {children}
+    </div>
+  );
+};
 
 /**
  * GPU names once per server as column headers (server name on the same line), then a Reserved
@@ -188,11 +238,11 @@ export const LabAcceleratorTable: React.FC<{
     // Each server on its own shaded block (the stock accelerator block), only as wide as its
     // content, so blocks sit side by side and wrap on narrow screens.
     return (
-      <div
+      <ServerBlock
         key={server.name || '-'}
+        columns={1 + server.rows.length}
+        contentKey={JSON.stringify(server.rows)}
         style={{
-          display: 'grid',
-          gridTemplateColumns: `repeat(${1 + server.rows.length}, max-content)`,
           columnGap: gap,
           maxWidth: '100%',
           overflowX: 'auto',
@@ -202,7 +252,7 @@ export const LabAcceleratorTable: React.FC<{
         }}
       >
         {cells}
-      </div>
+      </ServerBlock>
     );
   });
 
@@ -269,10 +319,17 @@ export const LabResourceStatistics: React.FC<
       />
       <LabAcceleratorTable
         displayType={displayType}
-        servers={_.map(layout.servers, (server) => ({
-          name: '',
-          rows: pairReservedAndSpot(server),
-        }))}
+        servers={_.map(
+          // With group data, models the group has neither capacity nor use for (the unnamed
+          // rest) are not part of this group: leave them out.
+          groupSlots
+            ? _.filter(layout.servers, (server) => server.name !== '')
+            : layout.servers,
+          (server) => ({
+            name: '',
+            rows: pairReservedAndSpot(server),
+          }),
+        )}
       />
     </BAIFlex>
   );
