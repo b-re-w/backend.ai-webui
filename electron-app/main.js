@@ -817,6 +817,19 @@ function createWindow() {
   mainWindow.setBounds(windowState.bounds);
   mainWindow.setBounds(windowState.bounds);
   measureBoundsDrift(mainWindow, windowState.bounds);
+  // Also save shortly after every resize or move, not only on close: an update
+  // restart, a crash or a forced quit may never reach the close handler.
+  let saveTimer = null;
+  const saveSoon = () => {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      if (mainWindow && !mainWindow.isDestroyed()) saveWindowState(mainWindow);
+    }, 1000);
+  };
+  mainWindow.on('resize', saveSoon);
+  mainWindow.on('move', saveSoon);
+  mainWindow.on('maximize', saveSoon);
+  mainWindow.on('unmaximize', saveSoon);
   setTimeout(() => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     const b = mainWindow.getBounds();
