@@ -232,8 +232,13 @@ export const LabResourceStatistics: React.FC<
   > & {
     resourceData: ResourceDataLike;
     displayType: DisplayType;
+    /** check-presets using/remaining of the shown group: the denominator without a limit. */
+    groupSlots?: {
+      using?: Record<string, unknown>;
+      remaining?: Record<string, unknown>;
+    };
   }
-> = ({ resourceData, displayType, ...props }) => {
+> = ({ resourceData, displayType, groupSlots, ...props }) => {
   'use memo';
   const layout = arrangeLabAccelerators(
     _.map(resourceData.accelerators, (acc) => ({
@@ -243,7 +248,7 @@ export const LabResourceStatistics: React.FC<
       used: acc[displayType].current,
       total: acc[displayType].total ?? Number.POSITIVE_INFINITY,
     })),
-    null,
+    groupSlots ? { group: groupSlots } : null,
   );
   const otherKeys = new Set(_.map(layout.others, 'key'));
   return (

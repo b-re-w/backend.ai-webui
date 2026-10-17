@@ -89,3 +89,30 @@ describe('pairReservedAndSpot', () => {
     ]);
   });
 });
+
+describe('open amount as the denominator', () => {
+  it('uses what the user uses plus what is left in the group when there is no limit', () => {
+    const layout = arrangeLabAccelerators(
+      [
+        slot('cuda-pro6000.shares', 'PRO 6000', 2),
+        slot('cuda-pro6000-spot.shares', 'PRO 6000 Spot', 0),
+      ],
+      {
+        primary: {
+          using: { 'cuda-pro6000.shares': '2' },
+          remaining: {
+            'cuda-pro6000.shares': '0',
+            'cuda-pro6000-spot.shares': '1.5',
+          },
+        },
+      },
+    );
+    const primary = layout.servers[0];
+    expect(primary.reserved[0]).toEqual(
+      expect.objectContaining({ used: 2, total: 2 }),
+    );
+    expect(primary.spot[0]).toEqual(
+      expect.objectContaining({ used: 0, total: 1.5 }),
+    );
+  });
+});

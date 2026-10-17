@@ -254,6 +254,9 @@ const MyResourceWithinResourceGroup: React.FC<
         <Skeleton active />
       ) : (
         <LabResourceStatistics
+          groupSlots={
+            checkPresetInfo?.scaling_groups?.[deferredCurrentResourceGroup]
+          }
           resourceData={resourceData}
           displayType={displayType}
           progressMode="ghost"

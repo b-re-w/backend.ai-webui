@@ -144,6 +144,17 @@ export function arrangeLabAccelerators(
         'used',
         'total',
       ]);
+      // Without a finite limit, the denominator is what is open to the user in that group:
+      // what they use there plus what they could still take (check-presets using + remaining).
+      const groupSlots = group ? scalingGroups?.[group] : undefined;
+      if (!Number.isFinite(model.total) && groupSlots) {
+        model.total = _.sumBy(
+          entry.keys,
+          (key) =>
+            toNumber(groupSlots.using?.[key]) +
+            toNumber(groupSlots.remaining?.[key]),
+        );
+      }
       servers.get(group)![entry.spot ? 'spot' : 'reserved'].push(model);
     }
   }
