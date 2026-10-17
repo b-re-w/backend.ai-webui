@@ -20,6 +20,7 @@ proxyURL = "https://wsproxy.onprem.backend.ai:9443/"
 disableCertCheck = false
 
 [resources]
+resourceGroupOrder = "primary,secondary,console" # Lab: resource group order in selectors
 openPortToPublic = true
 maxCPUCoresPerContainer = 4096
 maxMemoryPerContainer = 16384
