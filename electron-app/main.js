@@ -618,7 +618,8 @@ function initialWindowState() {
   try {
     const saved = JSON.parse(nfs.readFileSync(windowStatePath(), 'utf8'));
     const { x, y, width, height } = saved.bounds ?? {};
-    if ([x, y, width, height].every(Number.isFinite)) {
+    // A saved size this small comes from the old half-size bug: start over.
+    if ([x, y, width, height].every(Number.isFinite) && width >= 640 && height >= 480) {
       const area = screen.getDisplayMatching({ x, y, width, height }).workArea;
       const visible =
         x < area.x + area.width - 100 &&
@@ -729,7 +730,11 @@ function createWindow() {
   setSameSitePolicy();
   const windowState = initialWindowState();
   mainWindow = new BrowserWindow({
-    ...windowState.bounds,
+    // Size only: placed on its display below. Created directly at x/y on a display
+    // with another scale (e.g. a 200% third monitor next to a 100% primary),
+    // Windows rescales the window after creation and it comes up at half size.
+    width: windowState.bounds.width,
+    height: windowState.bounds.height,
     title: 'Backend.AI',
     frame: true,
     ...(useTitleBarOverlay
@@ -807,7 +812,21 @@ function createWindow() {
     mainWindow.webContents.setDevToolsWebContents(devtools.webContents);
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   }
+  // Move to the saved place, then set the bounds again once the window is on that
+  // display and Windows has applied its scale (the second call fixes the size).
+  mainWindow.setBounds(windowState.bounds);
+  mainWindow.setBounds(windowState.bounds);
   measureBoundsDrift(mainWindow, windowState.bounds);
+  setTimeout(() => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    const b = mainWindow.getBounds();
+    if (
+      b.width !== windowState.bounds.width ||
+      b.height !== windowState.bounds.height
+    ) {
+      mainWindow.setBounds(windowState.bounds);
+    }
+  }, 500);
   if (windowState.maximized) mainWindow.maximize();
   // Started by the updater (or another program) in the background, Windows keeps
   // a new window behind the others. Bring the main window to the front once.
