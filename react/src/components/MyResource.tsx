@@ -167,35 +167,6 @@ const MyResource: React.FC<MyResourceProps> = ({
     checkPresetInfo?.scaling_groups,
     baiClient?._config?.resourceGroupOrder,
   );
-  const renderModels = (
-    label: string,
-    models: {
-      key: string;
-      title: string;
-      displayUnit: string;
-      used: number;
-      total: number;
-    }[],
-  ) =>
-    models.length > 0 && (
-      <BAIFlex direction="column" align="stretch" gap="xxs">
-        <Typography.Text type="secondary">{label}</Typography.Text>
-        <BAIRowWrapWithDividers dividerColor={token.colorBorder}>
-          {models.map((model) => (
-            <BAIStatistic
-              key={model.key}
-              current={model.used}
-              total={model.total}
-              title={model.title}
-              unit={model.displayUnit}
-              progressMode="normal"
-              precision={2}
-            />
-          ))}
-        </BAIRowWrapWithDividers>
-      </BAIFlex>
-    );
-
   return (
     <BAIFlex
       direction="column"
@@ -239,12 +210,13 @@ const MyResource: React.FC<MyResourceProps> = ({
         displayType="used"
         progressMode="normal"
       />
-      {labLayout.servers.map((server) => (
+      {labLayout.servers.length > 0 && (
+        // One block like the stock accelerator row: a line per server, reserved
+        // models first, then spot (their names already say Spot).
         <BAIFlex
-          key={server.name || '-'}
           direction="column"
           align="stretch"
-          gap="sm"
+          gap="xs"
           style={{
             marginTop: token.marginSM,
             backgroundColor: token.colorBgLayout,
@@ -252,13 +224,35 @@ const MyResource: React.FC<MyResourceProps> = ({
             padding: token.padding,
           }}
         >
-          <Typography.Text strong>
-            {server.name || t('labgpu.OtherServers')}
-          </Typography.Text>
-          {renderModels('Reserved', server.reserved)}
-          {renderModels('Spot', server.spot)}
+          {labLayout.servers.map((server) => (
+            <BAIFlex
+              key={server.name || '-'}
+              gap="md"
+              align="center"
+              wrap="wrap"
+            >
+              <Typography.Text strong style={{ minWidth: 80 }}>
+                {server.name
+                  ? _.upperFirst(server.name)
+                  : t('labgpu.OtherServers')}
+              </Typography.Text>
+              <BAIRowWrapWithDividers dividerColor={token.colorBorder}>
+                {[...server.reserved, ...server.spot].map((model) => (
+                  <BAIStatistic
+                    key={model.key}
+                    current={model.used}
+                    total={model.total}
+                    title={model.title}
+                    unit={model.displayUnit}
+                    progressMode="normal"
+                    precision={2}
+                  />
+                ))}
+              </BAIRowWrapWithDividers>
+            </BAIFlex>
+          ))}
         </BAIFlex>
-      ))}
+      )}
     </BAIFlex>
   );
 };
