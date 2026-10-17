@@ -289,7 +289,7 @@ export const LabGpuStatusTag: React.FC<{ info: LabGpuSessionInfo }> = ({
     const tag = SPOT_STATE_TAG[info.spot.state];
     return (
       <Tooltip title={t(`labgpu.${tag.detail}`)}>
-        <Tag color={tag.color}>Spot · {t(`labgpu.${tag.label}`)}</Tag>
+        <Tag color={tag.color}>{t(`labgpu.${tag.label}`)}</Tag>
       </Tooltip>
     );
   }
@@ -303,7 +303,7 @@ export const LabGpuStatusTag: React.FC<{ info: LabGpuSessionInfo }> = ({
           total: lending.total,
         })}
       >
-        <Tag color="orange">Reserved · {t('labgpu.Lent')}</Tag>
+        <Tag color="orange">{t('labgpu.Lent')}</Tag>
       </Tooltip>
     );
   }
@@ -315,9 +315,9 @@ export const LabGpuStatusTag: React.FC<{ info: LabGpuSessionInfo }> = ({
           total: lending.total,
         })}
       >
-        <Tag color="green">Reserved · {t('labgpu.Lendable')}</Tag>
+        <Tag color="green">{t('labgpu.Lendable')}</Tag>
       </Tooltip>
     );
   }
-  return <Tag>Reserved · {t('labgpu.NotLent')}</Tag>;
+  return <Tag>{t('labgpu.NotLent')}</Tag>;
 };
