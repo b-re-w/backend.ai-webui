@@ -37,6 +37,9 @@ env:
 jobs:
   web:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write  # cancel a develop run that a lab release run already covers
     outputs:
       version: ${{ steps.version.outputs.version }}
       build_version: ${{ steps.version.outputs.build_version }}
@@ -68,6 +71,20 @@ jobs:
             fi
           fi
           echo "build_version=$v" >> "$GITHUB_OUTPUT"
+
+      # `git push --atomic origin develop v<ver>-lab.<n>` starts a develop run and a tag run for
+      # the same commit; the tag run builds and releases it, so the develop run stops here.
+      - name: Skip a develop build that a lab release covers
+        if: github.ref_type == 'branch' && steps.version.outputs.version == ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if git tag --points-at HEAD | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+-lab\.[0-9]+$'; then
+            echo "A lab release tag points at this commit; the tag run builds it."
+            gh run cancel "$GITHUB_RUN_ID"
+            sleep 60
+          fi
 
       - name: Set build version
         run: |
