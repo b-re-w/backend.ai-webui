@@ -1832,7 +1832,7 @@
   "labgpu": {
     "GpuLending": "GPU 대여",
     "Lendable": "빌려줄 수 있음",
-    "LendableGpus": "reserved 세션이 GPU를 쓰지 않고 있어 GPU {{lendable}}/{{total}}개에 스팟 작업이 들어올 수 있습니다",
+    "LendableGpus": "Reserved 세션이 GPU를 쓰지 않고 있어 GPU {{lendable}}/{{total}}개에 스팟 작업이 들어올 수 있습니다",
     "Lent": "빌려주는 중",
     "LentFor": "{{hours}}시간 {{minutes}}분째 ({{since}}부터)",
     "LentGpus": "GPU {{lent}}/{{total}}개를 스팟 작업에 빌려주고 있습니다",
@@ -1847,7 +1847,7 @@
     "SpotOom": "회수됨",
     "SpotOomDetail": "옮길 GPU가 없어 메모리 부족 오류를 보냈습니다. 작업을 저장해 주세요",
     "SpotParked": "회수됨",
-    "SpotParkedDetail": "reserved 세션이 GPU를 다시 써서 작업을 멈춰 두었습니다. 빈 GPU가 생기면 자동으로 이어서 실행됩니다",
+    "SpotParkedDetail": "Reserved 세션이 GPU를 다시 써서 작업을 멈춰 두었습니다. 빈 GPU가 생기면 자동으로 이어서 실행됩니다",
     "SpotResumed": "다시 실행됨",
     "SpotResumedDetail": "빈 GPU로 옮겨 멈춘 곳부터 이어서 실행하고 있습니다",
     "SpotRunning": "실행 중",
