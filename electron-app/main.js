@@ -634,7 +634,6 @@ function initialWindowState() {
             height: Math.min(height, area.height),
           },
           maximized: saved.maximized === true,
-          useContentSize: saved.content === true,
         };
       }
     }
@@ -652,22 +651,39 @@ function initialWindowState() {
       height,
     },
     maximized: false,
-    useContentSize: false,
   };
 }
+// With the hidden title bar on Windows (and at fractional display scales) the
+// bounds a window reports differ from the bounds it was created with, so saving
+// what it reports made it shrink at every restart. Measure that difference once
+// right after creating the window and add it back when saving, whatever the
+// platform's cause.
+let boundsDrift = { x: 0, y: 0, width: 0, height: 0 };
+function measureBoundsDrift(win, requested) {
+  const actual = win.getBounds();
+  boundsDrift = {
+    x: requested.x - actual.x,
+    y: requested.y - actual.y,
+    width: requested.width - actual.width,
+    height: requested.height - actual.height,
+  };
+}
+function compensated(bounds) {
+  return {
+    x: bounds.x + boundsDrift.x,
+    y: bounds.y + boundsDrift.y,
+    width: bounds.width + boundsDrift.width,
+    height: bounds.height + boundsDrift.height,
+  };
+}
+
 function saveWindowState(win) {
   try {
     nfs.writeFileSync(
       windowStatePath(),
       JSON.stringify({
-        // Content size: with the hidden title bar on Windows the outer bounds read
-        // back smaller than the size the window was created with, so the window
-        // shrank a little at every restart. The window is created from this with
-        // useContentSize, which reads back the same.
-        bounds: win.isMaximized()
-          ? win.getNormalBounds()
-          : win.getContentBounds(),
-        content: !win.isMaximized(),
+        // Bounds as they would be passed to new BrowserWindow (see boundsDrift).
+        bounds: compensated(win.getNormalBounds()),
         maximized: win.isMaximized(),
       }),
     );
@@ -697,7 +713,6 @@ function createWindow() {
   const windowState = initialWindowState();
   mainWindow = new BrowserWindow({
     ...windowState.bounds,
-    useContentSize: windowState.useContentSize,
     title: 'Backend.AI',
     frame: true,
     ...(useTitleBarOverlay
@@ -775,6 +790,7 @@ function createWindow() {
     mainWindow.webContents.setDevToolsWebContents(devtools.webContents);
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   }
+  measureBoundsDrift(mainWindow, windowState.bounds);
   if (windowState.maximized) mainWindow.maximize();
   // Started by the updater (or another program) in the background, Windows keeps
   // a new window behind the others. Bring the main window to the front once.
