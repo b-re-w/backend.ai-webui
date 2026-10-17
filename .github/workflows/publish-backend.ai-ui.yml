@@ -8,6 +8,7 @@ on:
       - main
     tags:
       - v*
+      - '!v*-lab.*' # lab fork releases are not npm releases
 
 jobs:
   publish:
