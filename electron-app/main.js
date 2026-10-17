@@ -185,6 +185,8 @@ const UPDATE_REPO = { owner: 'b-re-w', repo: 'backend.ai-webui' };
 const UPDATE_INTERVAL_MS = 60 * 60 * 1000;
 let updateTimer = null;
 let updateDownloaded = false; // Windows: installs on quit, nothing more to check
+// Restarting for an update: windows close without their usual confirmations.
+let quittingForUpdate = false;
 let notifiedVersion = ''; // other systems: the version already offered
 function checkForUpdates() {
   loadDesktopSettings();
@@ -228,15 +230,28 @@ function getWindowsUpdater() {
   });
   autoUpdater.on('update-downloaded', async (info) => {
     updateDownloaded = true;
-    const { response } = await dialog.showMessageBox({
+    // On top of the main window so the question is not hidden behind it.
+    const parent = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null;
+    if (parent) {
+      if (parent.isMinimized()) parent.restore();
+      parent.focus();
+    }
+    const options = {
       type: 'info',
       buttons: ['Restart now', 'Later'],
       defaultId: 0,
       cancelId: 1,
       message: `Backend.AI Desktop ${info.version} is ready to install.`,
       detail: 'Restart now to update, or it installs when you quit the app.',
-    });
-    if (response === 0) autoUpdater.quitAndInstall();
+    };
+    const { response } = parent
+      ? await dialog.showMessageBox(parent, options)
+      : await dialog.showMessageBox(options);
+    // Silent install (no installer wizard), then start the new version.
+    if (response === 0) {
+      quittingForUpdate = true;
+      autoUpdater.quitAndInstall(true, true);
+    }
   });
   windowsUpdater = autoUpdater;
   return autoUpdater;
@@ -739,7 +754,7 @@ function createWindow() {
   if (windowState.maximized) mainWindow.maximize();
   // Emitted when the window is closed.
   mainWindow.on('close', (e) => {
-    if (mainWindow) {
+    if (mainWindow && !quittingForUpdate) {
       saveWindowState(mainWindow);
       e.preventDefault();
       mainWindow.webContents.send('app-close-window');
@@ -960,6 +975,7 @@ function newAppWindow(details) {
   // (beforeunload) keeps the window open, as when the page was the window's own.
   let viewUnloaded = false;
   win.on('close', (event) => {
+    if (quittingForUpdate) return;
     if (viewUnloaded || !viewAttached || view.webContents.isDestroyed()) return;
     event.preventDefault();
     view.webContents.close({ waitForBeforeUnload: true });
