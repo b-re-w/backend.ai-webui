@@ -202,18 +202,31 @@ const MyResource: React.FC<MyResourceProps> = ({
         }
       />
 
+      {/* Lab: usage numbers in the theme success color, the way ResourceStatistics draws its
+          free view: the free display is fed the used amounts. */}
       <ResourceStatistics
         resourceData={{
-          ...resourceData,
-          accelerators: _.filter(resourceData.accelerators, (acc) =>
-            _.some(labLayout.others, (other) => other.key === acc.key),
+          cpu: resourceData.cpu && {
+            ...resourceData.cpu,
+            free: resourceData.cpu.used,
+          },
+          memory: resourceData.memory && {
+            ...resourceData.memory,
+            free: resourceData.memory.used,
+          },
+          accelerators: _.map(
+            _.filter(resourceData.accelerators, (acc) =>
+              _.some(labLayout.others, (other) => other.key === acc.key),
+            ),
+            (acc) => ({ ...acc, free: acc.used }),
           ),
         }}
-        displayType="used"
+        displayType="free"
         progressMode="normal"
       />
       <div style={{ marginTop: token.marginSM }}>
         <LabAcceleratorTable
+          accent
           servers={labLayout.servers.map((server) => ({
             name: server.name,
             rows: pairReservedAndSpot(server),

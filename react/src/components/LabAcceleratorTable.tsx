@@ -14,7 +14,7 @@ import {
   arrangeLabAccelerators,
   pairReservedAndSpot,
 } from '../helper/labAcceleratorGroups';
-import { theme, Typography } from 'antd';
+import { theme, Tooltip, Typography } from 'antd';
 import { BAIFlex, ResourceStatistics } from 'backend.ai-ui';
 import * as _ from 'lodash-es';
 import React from 'react';
@@ -27,112 +27,189 @@ export interface LabTableServer {
   rows: LabAcceleratorRow[];
 }
 
-const formatAmount = (value: number) =>
-  Number.isFinite(value) ? String(_.round(value, 2)) : '-';
-
-const AmountCell: React.FC<{ model: LabAcceleratorModel | null }> = ({
-  model,
-}) => {
-  const { token } = theme.useToken();
-  if (!model) {
-    return <Typography.Text type="secondary">-</Typography.Text>;
-  }
-  return (
-    <span>
-      <Typography.Text strong>{formatAmount(model.used)}</Typography.Text>
-      {Number.isFinite(model.total) && model.total > 0 && (
-        <Typography.Text
-          type="secondary"
-          style={{ fontSize: token.fontSizeSM, marginLeft: 2 }}
-        >
-          / {formatAmount(model.total)}
-        </Typography.Text>
-      )}
-    </span>
-  );
-};
+/** Same number format as BAIStatistic (precision 2, trailing zeros dropped). */
+const format = (value: number) =>
+  Number.isFinite(value) ? String(parseFloat(value.toFixed(2))) : '\u221e';
 
 /** A row is shown when the group has that model at all (some capacity or some use). */
 const present = (row: LabAcceleratorRow) =>
   _.some([row.reserved, row.spot], (m) => m && (m.used > 0 || m.total > 0));
 
+/**
+ * The vertical divider of BAIRowWrapWithDividers, copied as is: a 1px line overlaid in the
+ * middle of the column gap, full item height, no layout impact.
+ */
+const ColumnDivider: React.FC<{ color: string; gap: number }> = ({
+  color,
+  gap,
+}) => (
+  <span
+    aria-hidden
+    style={{
+      position: 'absolute',
+      top: 0,
+      bottom: 0,
+      right: -gap / 2,
+      width: 1,
+      background: color,
+      pointerEvents: 'none',
+    }}
+  />
+);
+
+/**
+ * GPU names once per server as column headers (server name on the same line), then a Reserved
+ * line and a Spot line of amounts. Typography, sizes, colors, divider and gap are those of the
+ * stock accelerator row (ResourceStatistics + BAIStatistic + BAIRowWrapWithDividers).
+ */
 export const LabAcceleratorTable: React.FC<{
   servers: LabTableServer[];
   otherServersLabel?: string;
-}> = ({ servers, otherServersLabel }) => {
+  displayType?: DisplayType;
+  /** Lab: theme success color for the numbers also in used mode (My Resources on Sessions). */
+  accent?: boolean;
+}> = ({ servers, otherServersLabel, displayType = 'used', accent = false }) => {
   'use memo';
   const { token } = theme.useToken();
-  const grouped = _.some(servers, (s) => s.name !== '');
   const visible = _.filter(
     _.map(servers, (s) => ({ ...s, rows: _.filter(s.rows, present) })),
     (s) => s.rows.length > 0,
   );
   if (visible.length === 0) return null;
-  const head: React.CSSProperties = {
-    color: token.colorTextSecondary,
-    fontWeight: 'normal',
-    textAlign: 'left',
-    padding: `0 ${token.paddingSM}px ${token.paddingXXS}px 0`,
-  };
-  const cell: React.CSSProperties = {
-    padding: `${token.paddingXXS}px ${token.paddingSM}px ${token.paddingXXS}px 0`,
-    verticalAlign: 'top',
-  };
-  return (
-    <div
+  const grouped = _.some(visible, (s) => s.name !== '');
+  // BAIRowWrapWithDividers defaults and the stock accelerator row's divider color.
+  const gap = token.marginXXL;
+  const dividerColor = token.colorBorder;
+  const numberColor =
+    accent || displayType === 'free' ? token.colorSuccess : token.colorText;
+
+  // BAIStatistic title: fontSizeLG, 1em line, colorTextSecondary, a small gap below it.
+  const header = (text: React.ReactNode) => (
+    <Typography.Text
       style={{
-        backgroundColor: token.colorBgLayout,
-        borderRadius: token.borderRadiusLG,
-        padding: token.paddingSM,
-        overflowX: 'auto',
+        fontSize: token.fontSizeLG,
+        lineHeight: '1em',
+        height: token.fontSizeLG,
+        marginBottom: token.marginXS,
+        color: token.colorTextSecondary,
+        whiteSpace: 'nowrap',
       }}
     >
-      <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-        <thead>
-          <tr>
-            {grouped && <th style={head} />}
-            <th style={head} />
-            <th style={head}>Reserved</th>
-            <th style={head}>Spot</th>
-          </tr>
-        </thead>
-        <tbody>
-          {visible.map((server, serverIndex) =>
-            server.rows.map((row, index) => (
-              <tr
-                key={`${server.name}-${row.model}`}
-                style={
-                  serverIndex > 0 && index === 0
-                    ? { borderTop: `1px solid ${token.colorBorderSecondary}` }
-                    : undefined
-                }
-              >
-                {grouped && (
-                  <td style={cell}>
-                    {index === 0 && (
-                      <Typography.Text strong>
-                        {server.name
-                          ? _.upperFirst(server.name)
-                          : otherServersLabel}
+      {text}
+    </Typography.Text>
+  );
+  // One line per amount, as tall as BAIStatistic's 32px number.
+  const line = (
+    key: string,
+    children: React.ReactNode,
+    align: 'end' | 'center' = 'end',
+  ) => (
+    <BAIFlex key={key} align={align} gap="xxs" style={{ height: 32 }}>
+      {children}
+    </BAIFlex>
+  );
+  const kinds = ['reserved', 'spot'] as const;
+
+  const blocks = visible.map((server) => {
+    const gridRow = 1;
+    const cells: React.ReactNode[] = [];
+    cells.push(
+      <BAIFlex
+        key={`${server.name}-lead`}
+        direction="column"
+        align="start"
+        gap="sm"
+        style={{ gridRow, gridColumn: 1 }}
+      >
+        {header(
+          grouped
+            ? server.name
+              ? _.upperFirst(server.name)
+              : otherServersLabel
+            : '',
+        )}
+        {kinds.map((kind) =>
+          line(
+            kind,
+            <Typography.Text
+              type="secondary"
+              style={{ lineHeight: '1em', whiteSpace: 'nowrap' }}
+            >
+              {kind === 'reserved' ? 'Reserved' : 'Spot'}
+            </Typography.Text>,
+            'center', // in the middle of the 32px amount line
+          ),
+        )}
+      </BAIFlex>,
+    );
+    server.rows.forEach((r, i) => {
+      cells.push(
+        <div
+          key={`${server.name}-${r.model}`}
+          style={{ gridRow, gridColumn: 2 + i, position: 'relative' }}
+        >
+          <BAIFlex direction="column" align="center" gap="sm">
+            {header(r.title)}
+            {kinds.map((kind) => {
+              const m = r[kind];
+              return line(
+                kind,
+                m ? (
+                  <Tooltip
+                    title={`${format(m.used)} / ${format(m.total)} ${m.displayUnit}`}
+                  >
+                    <BAIFlex align="end" gap="xxs">
+                      <Typography.Text
+                        style={{
+                          fontSize: 32,
+                          lineHeight: '1em',
+                          color: numberColor,
+                        }}
+                      >
+                        {format(m.used)}
                       </Typography.Text>
-                    )}
-                  </td>
-                )}
-                <td style={cell}>
-                  <Typography.Text>{row.title}</Typography.Text>
-                </td>
-                <td style={cell}>
-                  <AmountCell model={row.reserved} />
-                </td>
-                <td style={cell}>
-                  <AmountCell model={row.spot} />
-                </td>
-              </tr>
-            )),
+                      {Number.isFinite(m.total) && (
+                        <Typography.Text type="secondary">
+                          / {format(m.total)}
+                        </Typography.Text>
+                      )}
+                    </BAIFlex>
+                  </Tooltip>
+                ) : null,
+              );
+            })}
+          </BAIFlex>
+          {i < server.rows.length - 1 && (
+            <ColumnDivider color={dividerColor} gap={gap} />
           )}
-        </tbody>
-      </table>
-    </div>
+        </div>,
+      );
+    });
+    // Each server on its own shaded block (the stock accelerator block), only as wide as its
+    // content, so blocks sit side by side and wrap on narrow screens.
+    return (
+      <div
+        key={server.name || '-'}
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(${1 + server.rows.length}, max-content)`,
+          columnGap: gap,
+          maxWidth: '100%',
+          overflowX: 'auto',
+          backgroundColor: token.colorBgLayout,
+          borderRadius: token.borderRadiusLG,
+          padding: token.padding,
+        }}
+      >
+        {cells}
+      </div>
+    );
+  });
+
+  return (
+    <BAIFlex wrap="wrap" align="start" gap="sm">
+      {blocks}
+    </BAIFlex>
   );
 };
 
@@ -186,6 +263,7 @@ export const LabResourceStatistics: React.FC<
         }}
       />
       <LabAcceleratorTable
+        displayType={displayType}
         servers={_.map(layout.servers, (server) => ({
           name: '',
           rows: pairReservedAndSpot(server),
