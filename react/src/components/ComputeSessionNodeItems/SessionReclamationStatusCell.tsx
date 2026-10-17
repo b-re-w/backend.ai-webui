@@ -3,6 +3,7 @@
  Copyright (c) 2015-2026 Lablup Inc. All rights reserved.
  */
 import { SessionReclamationStatusCellFragment$key } from '../../__generated__/SessionReclamationStatusCellFragment.graphql';
+import { LabGpuStatusTag, useLabGpuSessionInfo } from '../LabGpuSessionInfo';
 import { IdleChecks } from './SessionIdleChecks';
 import SessionReclamationStatusPopover, {
   getOverallReclamation,
@@ -28,6 +29,7 @@ const SessionReclamationStatusCell: React.FC<
         id
         idle_checks
         ...SessionReclamationStatusPopoverFragment
+        ...LabGpuSessionInfoFragment
       }
     `,
     sessionFrgmt,
@@ -36,31 +38,34 @@ const SessionReclamationStatusCell: React.FC<
   const idleChecks: IdleChecks = useMemoizedJSONParse(session?.idle_checks, {
     fallbackValue: {},
   });
+  // Lab: lending of a reserved session and the reclaim state of a spot session.
+  const labGpu = useLabGpuSessionInfo(session);
+  const labTag = <LabGpuStatusTag info={labGpu} />;
 
   const utilization = idleChecks.utilization;
   const extra = utilization?.extra;
   const resources = extra?.resources;
 
-  if (!utilization || !resources) {
-    return <>-</>;
-  }
-
-  const overall = getOverallReclamation(
-    resources,
-    extra.thresholds_check_operator,
-  );
+  const overall =
+    utilization && resources
+      ? getOverallReclamation(resources, extra.thresholds_check_operator)
+      : null;
+  const hasLabTag = !!(labGpu.spot || labGpu.lending);
 
   if (!overall) {
-    return <>-</>;
+    return hasLabTag ? labTag : <>-</>;
   }
 
   const { token: badgeColor, label } = colorMap[overall.color];
 
   return (
-    <BAIFlex gap="xxs" align="center">
-      <Badge color={badgeColor} />
-      <Typography.Text>{label}</Typography.Text>
-      <SessionReclamationStatusPopover sessionFrgmt={session} />
+    <BAIFlex direction="column" align="start" gap="xxs">
+      <BAIFlex gap="xxs" align="center">
+        <Badge color={badgeColor} />
+        <Typography.Text>{label}</Typography.Text>
+        <SessionReclamationStatusPopover sessionFrgmt={session} />
+      </BAIFlex>
+      {hasLabTag && labTag}
     </BAIFlex>
   );
 };

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<cf5405595bb6dd1a964867ed5f56af0a>>
+ * @generated SignedSource<<5218cb4e3873f9f6da7f7592bf301e89>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,6 +17,7 @@ export type SessionActionButtonsFragment$data = {
   readonly name: string | null | undefined;
   readonly row_id: string;
   readonly service_ports: string | null | undefined;
+  readonly session_permissions: ReadonlyArray<any | null | undefined> | null | undefined;
   readonly status: string | null | undefined;
   readonly type: string | null | undefined;
   readonly user_id: string | null | undefined;
@@ -102,6 +103,13 @@ const node: ReaderFragment = {
       "storageKey": null
     },
     {
+      "alias": "session_permissions",
+      "args": null,
+      "kind": "ScalarField",
+      "name": "permissions",
+      "storageKey": null
+    },
+    {
       "args": null,
       "kind": "FragmentSpread",
       "name": "TerminateSessionModalFragment"
@@ -136,6 +144,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "35c9dd092b2fe3b02504582937447dec";
+(node as any).hash = "f3094006bbaa9e7824277b05c697e52d";
 
 export default node;

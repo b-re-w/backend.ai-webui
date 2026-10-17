@@ -639,6 +639,7 @@ type BackendAIConfig = {
   allow_manual_image_name_for_session: boolean;
   openPortToPublic: boolean;
   allowPreferredPort: boolean;
+  resourceGroupOrder?: string[];
   maxCPUCoresPerContainer: number;
   maxMemoryPerContainer: number;
   maxCUDADevicesPerContainer: number;

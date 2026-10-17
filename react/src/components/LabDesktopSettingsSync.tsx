@@ -31,9 +31,7 @@ export function endpointHost(endpoint?: string | null): string {
 const LabDesktopSettingsSync: React.FC = () => {
   'use memo';
   const [openLinksExternally] = useBAISettingUserState('open_links_externally');
-  const [automaticUpdateCheck] = useBAISettingUserState(
-    'automatic_update_check',
-  );
+  const [automaticUpdateCheck] = useBAISettingUserState('desktop_auto_update');
   const baiClient = useSuspendedBackendaiClient();
   const host = endpointHost(baiClient?._config?.endpoint);
   const enabled = openLinksExternally !== false;

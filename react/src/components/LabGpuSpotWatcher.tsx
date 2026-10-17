@@ -4,7 +4,7 @@
  */
 /**
  * Lab addition (backend.ai-plugin SPEC section 5): tell the user when one of their spot sessions
- * is taken back by the GPU owner, and when it runs again. Polls the user's running sessions'
+ * is taken back for a reserved session, and when it runs again. Polls the user's running sessions'
  * `<key>_spot_state` live stats and raises a WebUI notification (and a desktop notification when
  * the user setting allows it) on each state change.
  */

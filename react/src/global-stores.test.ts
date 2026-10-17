@@ -53,6 +53,10 @@ describe('BackendAISettingsStore', () => {
       expect(backendaiOptions.get('automatic_update_check')).toBe(true);
     });
 
+    it('has user.desktop_auto_update defaulting to true', () => {
+      expect(backendaiOptions.get('desktop_auto_update')).toBe(true);
+    });
+
     it('has user.custom_ssh_port defaulting to empty string', () => {
       expect(backendaiOptions.get('custom_ssh_port')).toBe('');
     });

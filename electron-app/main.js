@@ -14,6 +14,7 @@ const {
   clipboard,
   dialog,
   ipcMain,
+  screen,
 } = require('electron');
 process.env.electronPath = app.getAppPath();
 function isDev() {
@@ -569,13 +570,73 @@ app.once('ready', function () {
   Menu.setApplicationMenu(appmenu);
 });
 
+// The main window reopens with the size and place it had when it was last closed.
+// Without a saved state (or when it no longer fits a display) it opens centered,
+// leaving a margin inside the work area instead of filling the screen height.
+const WINDOW_MARGIN = 80;
+function windowStatePath() {
+  return path.join(app.getPath('userData'), 'lab-window-state.json');
+}
+function initialWindowState() {
+  try {
+    const saved = JSON.parse(nfs.readFileSync(windowStatePath(), 'utf8'));
+    const { x, y, width, height } = saved.bounds ?? {};
+    if ([x, y, width, height].every(Number.isFinite)) {
+      const area = screen.getDisplayMatching({ x, y, width, height }).workArea;
+      const visible =
+        x < area.x + area.width - 100 &&
+        x + width > area.x + 100 &&
+        y >= area.y - 20 &&
+        y < area.y + area.height - 100;
+      if (visible) {
+        return {
+          bounds: {
+            x,
+            y,
+            width: Math.min(width, area.width),
+            height: Math.min(height, area.height),
+          },
+          maximized: saved.maximized === true,
+        };
+      }
+    }
+  } catch (e) {
+    // First run or unreadable: use the default size.
+  }
+  const area = screen.getPrimaryDisplay().workArea;
+  const width = Math.min(windowWidth, area.width - WINDOW_MARGIN);
+  const height = Math.min(windowHeight, area.height - WINDOW_MARGIN);
+  return {
+    bounds: {
+      x: area.x + Math.round((area.width - width) / 2),
+      y: area.y + Math.round((area.height - height) / 2),
+      width,
+      height,
+    },
+    maximized: false,
+  };
+}
+function saveWindowState(win) {
+  try {
+    nfs.writeFileSync(
+      windowStatePath(),
+      JSON.stringify({
+        bounds: win.getNormalBounds(),
+        maximized: win.isMaximized(),
+      }),
+    );
+  } catch (e) {
+    // Not saved: the next launch uses the default size.
+  }
+}
+
 function createWindow() {
   // Create the browser window.
   devtools = null;
   setSameSitePolicy();
+  const windowState = initialWindowState();
   mainWindow = new BrowserWindow({
-    width: windowWidth,
-    height: windowHeight,
+    ...windowState.bounds,
     title: 'Backend.AI',
     frame: true,
     ...(useTitleBarOverlay
@@ -653,9 +714,11 @@ function createWindow() {
     mainWindow.webContents.setDevToolsWebContents(devtools.webContents);
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   }
+  if (windowState.maximized) mainWindow.maximize();
   // Emitted when the window is closed.
   mainWindow.on('close', (e) => {
     if (mainWindow) {
+      saveWindowState(mainWindow);
       e.preventDefault();
       mainWindow.webContents.send('app-close-window');
     }

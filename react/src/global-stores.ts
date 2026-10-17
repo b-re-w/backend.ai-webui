@@ -39,6 +39,9 @@ class BackendAISettingsStore {
     'user.preserve_login': true,
     'user.open_links_externally': true,
     'user.automatic_update_check': true,
+    // Lab: desktop app update check. A new key so a value saved by the old
+    // (inert) upstream toggle does not turn it off.
+    'user.desktop_auto_update': true,
     'user.custom_ssh_port': '',
     'user.beta_feature': false,
     'general.language': 'en',

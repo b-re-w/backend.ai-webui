@@ -112,7 +112,7 @@ const UserPreferencesPage = () => {
     useBAISettingUserState('selected_language');
   const [, setLanguage] = useBAISettingGeneralState('language');
   const [autoAutomaticUpdateCheck, setAutoAutomaticUpdateCheck] =
-    useBAISettingUserState('automatic_update_check');
+    useBAISettingUserState('desktop_auto_update');
   const [autoLogout, setAutoLogout] = useBAISettingUserState('auto_logout');
   const [isOpenSSHKeypairInfoModal, { toggle: toggleSSHKeypairInfoModal }] =
     useToggle(false);

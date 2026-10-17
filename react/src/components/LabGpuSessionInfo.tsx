@@ -11,7 +11,7 @@
  *   (plugin SPEC 2.14)
  */
 import { LabGpuSessionInfoFragment$key } from '../__generated__/LabGpuSessionInfoFragment.graphql';
-import { Tag, Typography } from 'antd';
+import { Tag, Tooltip, Typography } from 'antd';
 import { BAIFlex, useMemoizedJSONParse } from 'backend.ai-ui';
 import dayjs from 'dayjs';
 import { TFunction } from 'i18next';
@@ -275,4 +275,49 @@ export const LabGpuSpotStatus: React.FC<{ spot: LabGpuSpotState }> = ({
       )}
     </BAIFlex>
   );
+};
+
+/**
+ * Compact state for the session list: a spot session shows whether its GPU was
+ * taken back, a reserved session whether its GPUs are lent (details on hover).
+ */
+export const LabGpuStatusTag: React.FC<{ info: LabGpuSessionInfo }> = ({
+  info,
+}) => {
+  const { t } = useTranslation();
+  if (info.spot) {
+    const tag = SPOT_STATE_TAG[info.spot.state];
+    return (
+      <Tooltip title={t(`labgpu.${tag.detail}`)}>
+        <Tag color={tag.color}>Spot · {t(`labgpu.${tag.label}`)}</Tag>
+      </Tooltip>
+    );
+  }
+  const lending = info.lending;
+  if (!lending) return null;
+  if (lending.lent > 0) {
+    return (
+      <Tooltip
+        title={t('labgpu.LentGpus', {
+          lent: lending.lent,
+          total: lending.total,
+        })}
+      >
+        <Tag color="orange">Reserved · {t('labgpu.Lent')}</Tag>
+      </Tooltip>
+    );
+  }
+  if ((lending.lendable ?? 0) > 0) {
+    return (
+      <Tooltip
+        title={t('labgpu.LendableGpus', {
+          lendable: lending.lendable,
+          total: lending.total,
+        })}
+      >
+        <Tag color="green">Reserved · {t('labgpu.Lendable')}</Tag>
+      </Tooltip>
+    );
+  }
+  return <Tag>Reserved · {t('labgpu.NotLent')}</Tag>;
 };

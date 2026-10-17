@@ -21,6 +21,7 @@ export interface UserSettings {
   preserve_login?: boolean;
   open_links_externally?: boolean;
   automatic_update_check?: boolean;
+  desktop_auto_update?: boolean;
   custom_ssh_port?: string;
   beta_feature?: boolean;
   last_window_close_time?: number;

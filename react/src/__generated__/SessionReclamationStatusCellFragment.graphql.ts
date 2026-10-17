@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d01eaa28760b8e27364be8dd0f6618de>>
+ * @generated SignedSource<<f7c0bee1093c8d1816f860b4fa49554e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,7 +13,7 @@ import { FragmentRefs } from "relay-runtime";
 export type SessionReclamationStatusCellFragment$data = {
   readonly id: string;
   readonly idle_checks: string | null | undefined;
-  readonly " $fragmentSpreads": FragmentRefs<"SessionReclamationStatusPopoverFragment">;
+  readonly " $fragmentSpreads": FragmentRefs<"LabGpuSessionInfoFragment" | "SessionReclamationStatusPopoverFragment">;
   readonly " $fragmentType": "SessionReclamationStatusCellFragment";
 };
 export type SessionReclamationStatusCellFragment$key = {
@@ -45,12 +45,17 @@ const node: ReaderFragment = {
       "args": null,
       "kind": "FragmentSpread",
       "name": "SessionReclamationStatusPopoverFragment"
+    },
+    {
+      "args": null,
+      "kind": "FragmentSpread",
+      "name": "LabGpuSessionInfoFragment"
     }
   ],
   "type": "ComputeSessionNode",
   "abstractKey": null
 };
 
-(node as any).hash = "11dbc905e99d3a8f481e20a5161572b5";
+(node as any).hash = "d13e8903698fc677c11fa050f4431baf";
 
 export default node;

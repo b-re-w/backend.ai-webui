@@ -2,13 +2,17 @@
  @license
  Copyright (c) 2015-2026 Lablup Inc. All rights reserved.
  */
+import { arrangeLabAccelerators } from '../helper/labAcceleratorGroups';
+import { useSuspendedBackendaiClient } from '../hooks';
 import { ResourceSlotName, useResourceSlotsDetails } from '../hooks/backendai';
 import { useCurrentProjectValue } from '../hooks/useCurrentProject';
 import { useResourceLimitAndRemaining } from '../hooks/useResourceLimitAndRemaining';
-import { theme } from 'antd';
+import { theme, Typography } from 'antd';
 import {
   BAIBoardItemTitle,
   BAIFlex,
+  BAIRowWrapWithDividers,
+  BAIStatistic,
   BAIFlexProps,
   ResourceStatistics,
   convertToNumber,
@@ -55,6 +59,7 @@ const MyResource: React.FC<MyResourceProps> = ({
   });
 
   const resourceSlotsDetails = useResourceSlotsDetails();
+  const baiClient = useSuspendedBackendaiClient();
 
   const resourceData = (() => {
     // A failed request is a no-data state, not zero usage across every slot.
@@ -150,6 +155,47 @@ const MyResource: React.FC<MyResourceProps> = ({
     return { cpu: cpuData, memory: memoryData, accelerators };
   })();
 
+  // Lab: accelerators by server, each split into reserved and spot.
+  const labLayout = arrangeLabAccelerators(
+    _.map(resourceData.accelerators, (acc) => ({
+      key: acc.key,
+      title: acc.metadata.title,
+      displayUnit: acc.metadata.displayUnit,
+      used: acc.used.current,
+      total: acc.used.total,
+    })),
+    checkPresetInfo?.scaling_groups,
+    baiClient?._config?.resourceGroupOrder,
+  );
+  const renderModels = (
+    label: string,
+    models: {
+      key: string;
+      title: string;
+      displayUnit: string;
+      used: number;
+      total: number;
+    }[],
+  ) =>
+    models.length > 0 && (
+      <BAIFlex direction="column" align="stretch" gap="xxs">
+        <Typography.Text type="secondary">{label}</Typography.Text>
+        <BAIRowWrapWithDividers dividerColor={token.colorBorder}>
+          {models.map((model) => (
+            <BAIStatistic
+              key={model.key}
+              current={model.used}
+              total={model.total}
+              title={model.title}
+              unit={model.displayUnit}
+              progressMode="normal"
+              precision={2}
+            />
+          ))}
+        </BAIRowWrapWithDividers>
+      </BAIFlex>
+    );
+
   return (
     <BAIFlex
       direction="column"
@@ -184,10 +230,35 @@ const MyResource: React.FC<MyResourceProps> = ({
       />
 
       <ResourceStatistics
-        resourceData={resourceData}
+        resourceData={{
+          ...resourceData,
+          accelerators: _.filter(resourceData.accelerators, (acc) =>
+            _.some(labLayout.others, (other) => other.key === acc.key),
+          ),
+        }}
         displayType="used"
         progressMode="normal"
       />
+      {labLayout.servers.map((server) => (
+        <BAIFlex
+          key={server.name || '-'}
+          direction="column"
+          align="stretch"
+          gap="sm"
+          style={{
+            marginTop: token.marginSM,
+            backgroundColor: token.colorBgLayout,
+            borderRadius: token.borderRadiusLG,
+            padding: token.padding,
+          }}
+        >
+          <Typography.Text strong>
+            {server.name || t('labgpu.OtherServers')}
+          </Typography.Text>
+          {renderModels('Reserved', server.reserved)}
+          {renderModels('Spot', server.spot)}
+        </BAIFlex>
+      ))}
     </BAIFlex>
   );
 };
