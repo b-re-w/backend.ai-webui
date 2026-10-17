@@ -299,14 +299,16 @@ jobs:
           fi
           gh release upload "$tag" dist/*.zip dist/*.dmg dist/*-setup.exe dist/*-setup.exe.blockmap dist/latest.yml --clobber
 
+      # Also on release runs: the develop run for the same commit stops itself (see the web job),
+      # so lab-develop gets this build instead.
       - name: Publish rolling pre-release lab-develop
-        if: needs.web.outputs.version == ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.web.outputs.build_version }}
         run: |
           ls -l dist
-          notes="develop ${GITHUB_SHA::9} built $(date -u +%Y-%m-%dT%H:%MZ)"
+          notes="develop ${GITHUB_SHA::9} ($VERSION) built $(date -u +%Y-%m-%dT%H:%MZ)"
           if gh release view lab-develop >/dev/null 2>&1; then
             gh release edit lab-develop --prerelease --notes "$notes"
           else
