@@ -60,6 +60,18 @@ export function arrangeLabAccelerators(
   scalingGroups: Record<string, ScalingGroupSlots> | null | undefined,
   order: ReadonlyArray<string> = [],
 ): LabAcceleratorLayout {
+  // A slot exists when some resource group has capacity for it (or it is in use); with no group
+  // data, when its own total says so. Slot types a group merely knows by name (capacity 0) are
+  // not devices anyone has, so they are left out.
+  const exists = (slot: LabAcceleratorSlot) =>
+    scalingGroups
+      ? _.some(
+          scalingGroups,
+          (group) =>
+            toNumber(group?.remaining?.[slot.key]) > 0 ||
+            toNumber(group?.using?.[slot.key]) > 0,
+        )
+      : Number.isFinite(slot.total) && slot.total > 0;
   const models = new Map<
     string,
     { model: string; spot: boolean } & LabAcceleratorModel & {
@@ -70,7 +82,7 @@ export function arrangeLabAccelerators(
   for (const slot of slots) {
     const match = slot.key.match(LAB_SLOT);
     if (!match) {
-      if (slot.used > 0) others.push(slot);
+      if (slot.used > 0 || exists(slot)) others.push(slot);
       continue;
     }
     const [, model, spotSuffix, kind] = match;

@@ -634,6 +634,7 @@ function initialWindowState() {
             height: Math.min(height, area.height),
           },
           maximized: saved.maximized === true,
+          useContentSize: saved.content === true,
         };
       }
     }
@@ -651,6 +652,7 @@ function initialWindowState() {
       height,
     },
     maximized: false,
+    useContentSize: false,
   };
 }
 function saveWindowState(win) {
@@ -658,7 +660,14 @@ function saveWindowState(win) {
     nfs.writeFileSync(
       windowStatePath(),
       JSON.stringify({
-        bounds: win.getNormalBounds(),
+        // Content size: with the hidden title bar on Windows the outer bounds read
+        // back smaller than the size the window was created with, so the window
+        // shrank a little at every restart. The window is created from this with
+        // useContentSize, which reads back the same.
+        bounds: win.isMaximized()
+          ? win.getNormalBounds()
+          : win.getContentBounds(),
+        content: !win.isMaximized(),
         maximized: win.isMaximized(),
       }),
     );
@@ -688,6 +697,7 @@ function createWindow() {
   const windowState = initialWindowState();
   mainWindow = new BrowserWindow({
     ...windowState.bounds,
+    useContentSize: windowState.useContentSize,
     title: 'Backend.AI',
     frame: true,
     ...(useTitleBarOverlay

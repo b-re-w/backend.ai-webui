@@ -61,6 +61,13 @@ describe('arrangeLabAccelerators', () => {
     expect(layout.servers[2].reserved.map((m) => m.title)).toEqual(['A6000']);
   });
 
+  it('keeps a generic slot that some group has capacity for', () => {
+    const layout = arrangeLabAccelerators([slot('cuda.device', 'GPU', 0)], {
+      primary: { remaining: { 'cuda.device': '2' }, using: {} },
+    });
+    expect(layout.others.map((s) => s.key)).toEqual(['cuda.device']);
+  });
+
   it('drops generic slots that are not in use', () => {
     expect(layout.others).toEqual([]);
     const used = arrangeLabAccelerators([slot('cuda.device', 'GPU', 1)], {});
