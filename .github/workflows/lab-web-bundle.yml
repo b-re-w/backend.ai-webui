@@ -247,6 +247,8 @@ jobs:
           cp electron-app/package.json proj/
           (cd proj && npm pkg set version="$VERSION")
           cp manifest/backend-ai.ico proj/manifest/
+          # build/installer.nsh is picked up by electron-builder: relaunch after an update.
+          mkdir -p proj/build && cp electron-app-installer/installer.nsh proj/build/installer.nsh
           electron_version=$(node -p "require('./package.json').devDependencies.electron.replace(/^[^0-9]*/, '')")
           npx --yes electron-builder@26.15.3 --win nsis --x64 \
             --prepackaged "$PWD/pre/Backend.AI Desktop-win32-x64" \
