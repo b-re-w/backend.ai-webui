@@ -180,24 +180,36 @@ function updateDesktopSettings(next) {
 // The NSIS update replaces the installed app, so old versions do not pile up;
 // the downloaded installer is removed once the app runs the newest version.
 const UPDATE_REPO = { owner: 'b-re-w', repo: 'backend.ai-webui' };
-let updateChecked = false;
+// Checked when the WebUI first reports the settings after login, then every hour while
+// the app runs. Each new version is offered once.
+const UPDATE_INTERVAL_MS = 60 * 60 * 1000;
+let updateTimer = null;
+let updateDownloaded = false; // Windows: installs on quit, nothing more to check
+let notifiedVersion = ''; // other systems: the version already offered
 function checkForUpdates() {
   loadDesktopSettings();
-  if (updateChecked || !desktopSettings.autoUpdate || isDev()) return;
-  updateChecked = true;
+  if (updateTimer || !desktopSettings.autoUpdate || isDev()) return;
+  runUpdateCheck();
+  updateTimer = setInterval(runUpdateCheck, UPDATE_INTERVAL_MS);
+}
+function runUpdateCheck() {
+  loadDesktopSettings();
+  if (!desktopSettings.autoUpdate) return; // turned off since: skip until turned on again
   if (process.platform === 'win32') {
     checkForWindowsUpdate();
   } else {
     notifyNewerRelease();
   }
 }
-function checkForWindowsUpdate() {
+let windowsUpdater = null;
+function getWindowsUpdater() {
+  if (windowsUpdater) return windowsUpdater;
   let autoUpdater;
   try {
     ({ autoUpdater } = require('electron-updater'));
   } catch (e) {
     console.error('Update check skipped: electron-updater is missing', e);
-    return;
+    return null;
   }
   autoUpdater.updateConfigPath = path.join(__dirname, 'app-update.yml');
   autoUpdater.allowPrerelease = false;
@@ -215,6 +227,7 @@ function checkForWindowsUpdate() {
     nfs.rm(pending, { recursive: true, force: true }, () => {});
   });
   autoUpdater.on('update-downloaded', async (info) => {
+    updateDownloaded = true;
     const { response } = await dialog.showMessageBox({
       type: 'info',
       buttons: ['Restart now', 'Later'],
@@ -225,6 +238,13 @@ function checkForWindowsUpdate() {
     });
     if (response === 0) autoUpdater.quitAndInstall();
   });
+  windowsUpdater = autoUpdater;
+  return autoUpdater;
+}
+function checkForWindowsUpdate() {
+  if (updateDownloaded) return;
+  const autoUpdater = getWindowsUpdater();
+  if (!autoUpdater) return;
   autoUpdater
     .checkForUpdates()
     .catch((e) => console.error('Update check failed:', e));
@@ -240,6 +260,8 @@ async function notifyNewerRelease() {
     const release = await res.json();
     const latest = semver.valid(semver.clean(String(release.tag_name || '')));
     if (!latest || !semver.gt(latest, app.getVersion())) return;
+    if (latest === notifiedVersion) return;
+    notifiedVersion = latest;
     const { response } = await dialog.showMessageBox({
       type: 'info',
       buttons: ['Download', 'Later'],
