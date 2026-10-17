@@ -4,6 +4,7 @@
  */
 import { useSuspendedBackendaiClient } from '.';
 import { useRecentProjectGroup } from './backendai';
+import { sortResourceGroupsByOrder } from 'backend.ai-ui';
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { atomWithDefault } from 'jotai/utils';
 import * as _ from 'lodash-es';
@@ -163,14 +164,22 @@ const resourceGroupsForCurrentProjectAtom = atom(async (get) => {
       )
     : undefined;
 
+  const nonSftpResourceGroups =
+    resourceGroups && vhostInfo && sftpResourceGroups
+      ? _.filter(
+          resourceGroups.scaling_groups,
+          (rg) => !sftpResourceGroups.includes(rg.name),
+        )
+      : resourceGroups?.scaling_groups || undefined;
+
   return {
-    nonSftpResourceGroups:
-      resourceGroups && vhostInfo && sftpResourceGroups
-        ? _.filter(
-            resourceGroups.scaling_groups,
-            (rg) => !sftpResourceGroups.includes(rg.name),
-          )
-        : resourceGroups?.scaling_groups || undefined,
+    // Lab: in the configured order, so the first (default) group matches the selector.
+    nonSftpResourceGroups: nonSftpResourceGroups
+      ? sortResourceGroupsByOrder(
+          nonSftpResourceGroups,
+          client?._config?.resourceGroupOrder,
+        )
+      : undefined,
     vhostInfo,
     sftpResourceGroups,
   };

@@ -135,6 +135,7 @@ export { useEventNotStable } from './useEventNotStable';
 // instance binding.
 export {
   useProjectResourceGroups,
+  sortResourceGroupsByOrder,
   StorageHostFetchError,
 } from './useProjectResourceGroups';
 export type { ScalingGroupItem } from './useProjectResourceGroups';

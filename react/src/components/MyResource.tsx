@@ -225,18 +225,17 @@ const MyResource: React.FC<MyResourceProps> = ({
           }}
         >
           {labLayout.servers.map((server) => (
-            <BAIFlex
-              key={server.name || '-'}
-              gap="md"
-              align="center"
-              wrap="wrap"
-            >
-              <Typography.Text strong style={{ minWidth: 80 }}>
+            // Fixed-width name column, models wrap only inside their own column.
+            <BAIFlex key={server.name || '-'} gap="md" align="center">
+              <Typography.Text strong style={{ width: 90, flexShrink: 0 }}>
                 {server.name
                   ? _.upperFirst(server.name)
                   : t('labgpu.OtherServers')}
               </Typography.Text>
-              <BAIRowWrapWithDividers dividerColor={token.colorBorder}>
+              <BAIRowWrapWithDividers
+                dividerColor={token.colorBorder}
+                style={{ flex: 1, minWidth: 0 }}
+              >
                 {[...server.reserved, ...server.spot].map((model) => (
                   <BAIStatistic
                     key={model.key}

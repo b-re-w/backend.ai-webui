@@ -667,6 +667,20 @@ function saveWindowState(win) {
   }
 }
 
+let broughtToFront = false;
+function bringToFront(win) {
+  if (broughtToFront || !win || win.isDestroyed()) return;
+  broughtToFront = true;
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.setAlwaysOnTop(true);
+  win.focus();
+  if (process.platform === 'darwin') app.focus({ steal: true });
+  setTimeout(() => {
+    if (!win.isDestroyed()) win.setAlwaysOnTop(false);
+  }, 300);
+}
+
 function createWindow() {
   // Create the browser window.
   devtools = null;
@@ -752,6 +766,10 @@ function createWindow() {
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   }
   if (windowState.maximized) mainWindow.maximize();
+  // Started by the updater (or another program) in the background, Windows keeps
+  // a new window behind the others. Bring the main window to the front once.
+  mainWindow.once('ready-to-show', () => bringToFront(mainWindow));
+  mainWindow.webContents.once('did-finish-load', () => bringToFront(mainWindow));
   // Emitted when the window is closed.
   mainWindow.on('close', (e) => {
     if (mainWindow && !quittingForUpdate) {
