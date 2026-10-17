@@ -262,7 +262,13 @@ jobs:
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release edit "$tag" --prerelease=false --latest --notes "$notes"
           else
-            gh release create "$tag" --target "$GITHUB_SHA" --title "$tag" --latest --notes "$notes"
+            # A tag push already made the tag: point the release at it instead of passing a
+            # target commit (GITHUB_TOKEN got 403 creating a release with --target there).
+            if [ "$GITHUB_REF_TYPE" = tag ]; then
+              gh release create "$tag" --verify-tag --title "$tag" --latest --notes "$notes"
+            else
+              gh release create "$tag" --target "$GITHUB_SHA" --title "$tag" --latest --notes "$notes"
+            fi
           fi
           gh release upload "$tag" dist/*.zip dist/*.dmg dist/*-setup.exe dist/*-setup.exe.blockmap dist/latest.yml --clobber
 
