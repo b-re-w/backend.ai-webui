@@ -2,8 +2,9 @@
  @license
  Copyright (c) 2015-2026 Lablup Inc. All rights reserved.
  */
-import { useResourceSlotsDetails } from '../hooks/backendai';
 import { AgentStatsFragment$key } from '../__generated__/AgentStatsFragment.graphql';
+import { useResourceSlotsDetails } from '../hooks/backendai';
+import { LabResourceStatistics } from './LabAcceleratorTable';
 import { useControllableValue } from 'ahooks';
 import { Segmented, Skeleton, theme, Typography } from 'antd';
 import {
@@ -220,7 +221,7 @@ const AgentStats: React.FC<AgentStatsProps> = ({
       {resourceSlotsDetails.isLoading ? (
         <Skeleton active />
       ) : (
-        <ResourceStatistics
+        <LabResourceStatistics
           resourceData={agentStatsData}
           displayType={displayType === 'used' ? 'used' : 'free'}
           progressMode="normal"

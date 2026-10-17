@@ -146,3 +146,33 @@ export function arrangeLabAccelerators(
     others,
   };
 }
+
+export interface LabAcceleratorRow {
+  model: string; // e.g. "pro6000"
+  title: string; // reserved model name, e.g. "PRO 6000"
+  reserved: LabAcceleratorModel | null;
+  spot: LabAcceleratorModel | null;
+}
+
+/** A server's models as rows with their reserved and spot slots side by side. */
+export function pairReservedAndSpot(
+  server: LabAcceleratorServer,
+): LabAcceleratorRow[] {
+  const rows = new Map<string, LabAcceleratorRow>();
+  const row = (key: string, title: string) => {
+    const model = key.match(LAB_SLOT)?.[1] ?? key;
+    if (!rows.has(model)) {
+      rows.set(model, { model, title, reserved: null, spot: null });
+    }
+    return rows.get(model)!;
+  };
+  for (const m of server.reserved) {
+    const r = row(m.key, m.title);
+    r.reserved = m;
+    r.title = m.title;
+  }
+  for (const m of server.spot) {
+    row(m.key, m.title.replace(/\s*Spot$/i, '')).spot = m;
+  }
+  return _.sortBy([...rows.values()], 'title');
+}

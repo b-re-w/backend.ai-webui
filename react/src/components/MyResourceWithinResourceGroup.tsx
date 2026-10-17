@@ -8,6 +8,7 @@ import {
   useCurrentResourceGroupValue,
 } from '../hooks/useCurrentProject';
 import { useResourceLimitAndRemaining } from '../hooks/useResourceLimitAndRemaining';
+import { LabResourceStatistics } from './LabAcceleratorTable';
 import SharedResourceGroupSelectForCurrentProject from './SharedResourceGroupSelectForCurrentProject';
 import { useControllableValue } from 'ahooks';
 import { Segmented, Skeleton, theme, Typography } from 'antd';
@@ -252,7 +253,7 @@ const MyResourceWithinResourceGroup: React.FC<
       {resourceSlotsDetails.isLoading ? (
         <Skeleton active />
       ) : (
-        <ResourceStatistics
+        <LabResourceStatistics
           resourceData={resourceData}
           displayType={displayType}
           progressMode="ghost"

@@ -9,6 +9,7 @@ import {
   useResourceSlotsDetails,
 } from '../hooks/backendai';
 import { useCurrentResourceGroupValue } from '../hooks/useCurrentProject';
+import { LabResourceStatistics } from './LabAcceleratorTable';
 import SharedResourceGroupSelectForCurrentProject from './SharedResourceGroupSelectForCurrentProject';
 import { useControllableValue } from 'ahooks';
 import { Segmented, theme, Typography } from 'antd';
@@ -354,7 +355,7 @@ const TotalResourceWithinResourceGroup: React.FC<
         }
       />
 
-      <ResourceStatistics
+      <LabResourceStatistics
         resourceData={resourceData}
         displayType={displayType}
         progressMode="normal"

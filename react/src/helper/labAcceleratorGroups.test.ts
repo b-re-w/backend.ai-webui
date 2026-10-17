@@ -1,4 +1,7 @@
-import { arrangeLabAccelerators } from './labAcceleratorGroups';
+import {
+  arrangeLabAccelerators,
+  pairReservedAndSpot,
+} from './labAcceleratorGroups';
 import { describe, expect, it } from 'vitest';
 
 const slot = (key: string, title: string, used = 0, total = Infinity) => ({
@@ -62,5 +65,20 @@ describe('arrangeLabAccelerators', () => {
     expect(layout.others).toEqual([]);
     const used = arrangeLabAccelerators([slot('cuda.device', 'GPU', 1)], {});
     expect(used.others.map((s) => s.key)).toEqual(['cuda.device']);
+  });
+});
+
+describe('pairReservedAndSpot', () => {
+  it('puts a model and its spot slot on one row', () => {
+    const layout = arrangeLabAccelerators(slots, scalingGroups, ['primary']);
+    const rows = pairReservedAndSpot(layout.servers[0]);
+    expect(rows).toEqual([
+      expect.objectContaining({
+        model: 'pro6000',
+        title: 'PRO 6000',
+        reserved: expect.objectContaining({ used: 0 }),
+        spot: expect.objectContaining({ used: 1 }),
+      }),
+    ]);
   });
 });

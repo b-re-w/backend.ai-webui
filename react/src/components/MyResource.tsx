@@ -2,17 +2,19 @@
  @license
  Copyright (c) 2015-2026 Lablup Inc. All rights reserved.
  */
-import { arrangeLabAccelerators } from '../helper/labAcceleratorGroups';
+import {
+  arrangeLabAccelerators,
+  pairReservedAndSpot,
+} from '../helper/labAcceleratorGroups';
 import { useSuspendedBackendaiClient } from '../hooks';
 import { ResourceSlotName, useResourceSlotsDetails } from '../hooks/backendai';
 import { useCurrentProjectValue } from '../hooks/useCurrentProject';
 import { useResourceLimitAndRemaining } from '../hooks/useResourceLimitAndRemaining';
-import { theme, Typography } from 'antd';
+import { LabAcceleratorTable } from './LabAcceleratorTable';
+import { theme } from 'antd';
 import {
   BAIBoardItemTitle,
   BAIFlex,
-  BAIRowWrapWithDividers,
-  BAIStatistic,
   BAIFlexProps,
   ResourceStatistics,
   convertToNumber,
@@ -210,48 +212,15 @@ const MyResource: React.FC<MyResourceProps> = ({
         displayType="used"
         progressMode="normal"
       />
-      {labLayout.servers.length > 0 && (
-        // One block like the stock accelerator row: a line per server, reserved
-        // models first, then spot (their names already say Spot).
-        <BAIFlex
-          direction="column"
-          align="stretch"
-          gap="xs"
-          style={{
-            marginTop: token.marginSM,
-            backgroundColor: token.colorBgLayout,
-            borderRadius: token.borderRadiusLG,
-            padding: token.padding,
-          }}
-        >
-          {labLayout.servers.map((server) => (
-            // Fixed-width name column, models wrap only inside their own column.
-            <BAIFlex key={server.name || '-'} gap="md" align="center">
-              <Typography.Text strong style={{ width: 90, flexShrink: 0 }}>
-                {server.name
-                  ? _.upperFirst(server.name)
-                  : t('labgpu.OtherServers')}
-              </Typography.Text>
-              <BAIRowWrapWithDividers
-                dividerColor={token.colorBorder}
-                style={{ flex: 1, minWidth: 0 }}
-              >
-                {[...server.reserved, ...server.spot].map((model) => (
-                  <BAIStatistic
-                    key={model.key}
-                    current={model.used}
-                    total={model.total}
-                    title={model.title}
-                    unit={model.displayUnit}
-                    progressMode="normal"
-                    precision={2}
-                  />
-                ))}
-              </BAIRowWrapWithDividers>
-            </BAIFlex>
-          ))}
-        </BAIFlex>
-      )}
+      <div style={{ marginTop: token.marginSM }}>
+        <LabAcceleratorTable
+          servers={labLayout.servers.map((server) => ({
+            name: server.name,
+            rows: pairReservedAndSpot(server),
+          }))}
+          otherServersLabel={t('labgpu.OtherServers')}
+        />
+      </div>
     </BAIFlex>
   );
 };
