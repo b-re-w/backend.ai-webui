@@ -1,3 +1,4 @@
+import useConnectedBAIClient from '../components/provider/BAIClientProvider/hooks/useConnectedBAIClient';
 import { useSuspenseTanQuery } from '../helper/reactQueryAlias';
 import { useBAISignedRequestWithPromise } from './useBAISignedRequestWithPromise';
 import * as _ from 'lodash-es';
@@ -5,6 +6,21 @@ import * as _ from 'lodash-es';
 export interface ScalingGroupItem {
   name: string;
 }
+
+/**
+ * Orders resource groups by the configured `resourceGroupOrder` list. Groups in
+ * the list come first in list order; the rest follow, sorted by name.
+ */
+export const sortResourceGroupsByOrder = <T extends ScalingGroupItem>(
+  resourceGroups: ReadonlyArray<T>,
+  order: ReadonlyArray<string> | undefined,
+): T[] => {
+  const rank = new Map((order ?? []).map((name, index) => [name, index]));
+  return _.sortBy(resourceGroups, [
+    (item) => rank.get(item.name) ?? Number.MAX_SAFE_INTEGER,
+    (item) => item.name,
+  ]);
+};
 
 /**
  * Thrown when the vfolder host info fetch (`/folders/_/hosts`) inside
@@ -49,8 +65,7 @@ interface StorageHostsResponse {
 }
 
 type ProjectResourceGroupsQueryResult =
-  | [ScalingGroupsResponse, StorageHostsResponse]
-  | null;
+  [ScalingGroupsResponse, StorageHostsResponse] | null;
 
 interface UseProjectResourceGroupsOptions {
   /**
@@ -79,6 +94,7 @@ export const useProjectResourceGroups = (
 ) => {
   'use memo';
   const baiRequestWithPromise = useBAISignedRequestWithPromise();
+  const baiClient = useConnectedBAIClient();
 
   const { data } = useSuspenseTanQuery<ProjectResourceGroupsQueryResult>({
     queryKey: ['ResourceGroupSelectQuery', projectName],
@@ -122,7 +138,7 @@ export const useProjectResourceGroups = (
     (item) => item?.sftp_scaling_groups ?? [],
   );
 
-  const resourceGroups = _.filter(
+  const filteredResourceGroups = _.filter(
     data?.[0]?.scaling_groups ?? [],
     (item: ScalingGroupItem) => {
       if (_.includes(sftpResourceGroups, item.name)) {
@@ -133,6 +149,11 @@ export const useProjectResourceGroups = (
       }
       return true;
     },
+  );
+
+  const resourceGroups = sortResourceGroupsByOrder(
+    filteredResourceGroups,
+    baiClient?._config?.resourceGroupOrder,
   );
 
   return { resourceGroups };

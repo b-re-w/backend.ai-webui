@@ -109,6 +109,7 @@ export interface LoginConfigState {
   maxRNGDDevicesPerContainer: number;
   maxShmPerContainer: number;
   maxFileUploadSize: number;
+  resourceGroupOrder: string[];
   allow_image_list: string[];
   blockList: string[];
   inactiveList: string[];
@@ -178,6 +179,7 @@ export function getDefaultLoginConfig(): LoginConfigState {
     maxRNGDDevicesPerContainer: 8,
     maxShmPerContainer: 2,
     maxFileUploadSize: -1,
+    resourceGroupOrder: [],
     allow_image_list: [],
     blockList: [],
     inactiveList: [],
@@ -564,6 +566,17 @@ export function refreshConfigFromToml(config: any): LoginConfigState {
     value: parseInt(r?.maxFileUploadSize),
   }) as number;
 
+  state.resourceGroupOrder = getConfigValueByExists(r, {
+    valueType: 'array',
+    defaultValue: [] as string[],
+    value: r?.resourceGroupOrder
+      ? r.resourceGroupOrder
+          .split(',')
+          .map((el: string) => el.trim())
+          .filter(Boolean)
+      : [],
+  }) as string[];
+
   // -- environments section --
   state.allow_image_list = getConfigValueByExists(e, {
     valueType: 'array',
@@ -633,6 +646,7 @@ export function applyConfigToClient(cfg: LoginConfigState): void {
   client._config.openPortToPublic = cfg.openPortToPublic;
   client._config.allowPreferredPort = cfg.allowPreferredPort;
   client._config.allowNonAuthTCP = cfg.allowNonAuthTCP;
+  client._config.resourceGroupOrder = cfg.resourceGroupOrder;
   client._config.maxCPUCoresPerContainer = cfg.maxCPUCoresPerContainer;
   client._config.maxMemoryPerContainer = cfg.maxMemoryPerContainer;
   client._config.maxCUDADevicesPerContainer = cfg.maxCUDADevicesPerContainer;
