@@ -1,0 +1,5 @@
+# Lab fork: where electron-updater looks for releases (read by main.js).
+provider: github
+owner: b-re-w
+repo: backend.ai-webui
+updaterCacheDirName: backend.ai-desktop-updater

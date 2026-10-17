@@ -176,6 +176,8 @@ function updateDesktopSettings(next) {
 // Lab releases are published on the fork's GitHub releases as v<webui>-lab.<n>.
 // Windows installs from the NSIS installer update in place (electron-updater
 // reads latest.yml); other builds are told where to download the new version.
+// The NSIS update replaces the installed app, so old versions do not pile up;
+// the downloaded installer is removed once the app runs the newest version.
 const UPDATE_REPO = { owner: 'b-re-w', repo: 'backend.ai-webui' };
 let updateChecked = false;
 function checkForUpdates() {
@@ -196,11 +198,21 @@ function checkForWindowsUpdate() {
     console.error('Update check skipped: electron-updater is missing', e);
     return;
   }
-  autoUpdater.setFeedURL({ provider: 'github', ...UPDATE_REPO });
+  autoUpdater.updateConfigPath = path.join(__dirname, 'app-update.yml');
   autoUpdater.allowPrerelease = false;
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.on('error', (e) => console.error('Update check failed:', e));
+  autoUpdater.on('update-not-available', () => {
+    // electron-updater keeps downloads under %LOCALAPPDATA%\<updaterCacheDirName>.
+    if (!process.env.LOCALAPPDATA) return;
+    const pending = path.join(
+      process.env.LOCALAPPDATA,
+      'backend.ai-desktop-updater',
+      'pending',
+    );
+    nfs.rm(pending, { recursive: true, force: true }, () => {});
+  });
   autoUpdater.on('update-downloaded', async (info) => {
     const { response } = await dialog.showMessageBox({
       type: 'info',
