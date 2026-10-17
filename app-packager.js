@@ -98,6 +98,19 @@ if (selectedOptions.doSign === true && (args[0] === 'mas' || args[0] === 'darwin
   }
 }
 
+// Lab fork: Windows file versions take at most four numeric parts, while lab builds are
+// versioned 26.8.1-lab.2 or 26.8.1-lab.2.dev.24. Give the exe 26.8.1.2; the app itself keeps
+// the full version from its package.json (what the update check compares).
+if (options.platform === 'win32') {
+  const appVersion = require('./build/electron-app/package.json').version;
+  const match = appVersion.match(/^(\d+)\.(\d+)\.(\d+)(?:-lab\.(\d+))?/);
+  if (match && appVersion !== match.slice(1, 4).join('.')) {
+    const fileVersion = [match[1], match[2], match[3], match[4] || '0'].join('.');
+    options.appVersion = fileVersion;
+    options.buildVersion = fileVersion;
+  }
+}
+
 const run = async () => {
   console.log(clc.blue('\n[BUILD]') + ' Now packaging for ' + clc.yellow(options.platform) + ' with ' + clc.yellow(options.arch) + ' architecture.\n');
   await packager(options);
