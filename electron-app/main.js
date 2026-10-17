@@ -659,13 +659,29 @@ function initialWindowState() {
 // right after creating the window and add it back when saving, whatever the
 // platform's cause.
 let boundsDrift = { x: 0, y: 0, width: 0, height: 0 };
+let lastBoundsCheck = null; // saved with the state, to diagnose a wrong size
 function measureBoundsDrift(win, requested) {
+  const created = win.getBounds();
+  // A window that did not come up at the requested size (seen on Windows:
+  // about half the width and height) is set to it explicitly.
+  if (
+    created.width !== requested.width ||
+    created.height !== requested.height
+  ) {
+    win.setBounds(requested);
+  }
   const actual = win.getBounds();
   boundsDrift = {
     x: requested.x - actual.x,
     y: requested.y - actual.y,
     width: requested.width - actual.width,
     height: requested.height - actual.height,
+  };
+  lastBoundsCheck = {
+    requested,
+    created,
+    afterSet: actual,
+    scaleFactor: screen.getDisplayMatching(requested).scaleFactor,
   };
 }
 function compensated(bounds) {
@@ -685,6 +701,7 @@ function saveWindowState(win) {
         // Bounds as they would be passed to new BrowserWindow (see boundsDrift).
         bounds: compensated(win.getNormalBounds()),
         maximized: win.isMaximized(),
+        check: lastBoundsCheck,
       }),
     );
   } catch (e) {
