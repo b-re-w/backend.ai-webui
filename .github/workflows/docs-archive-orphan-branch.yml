@@ -82,7 +82,7 @@ jobs:
   build-and-archive:
     # Skip pre-releases (rc/alpha/beta) on the `release` trigger; push and
     # dispatch always run.
-    if: ${{ github.event_name != 'release' || github.event.release.prerelease == false }}
+    if: ${{ github.event_name != 'release' || (github.event.release.prerelease == false && !contains(github.event.release.tag_name, '-lab.')) }} # lab fork releases are not docs releases
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

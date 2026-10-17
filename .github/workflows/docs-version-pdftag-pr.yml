@@ -37,7 +37,7 @@ jobs:
   sync-version-pr:
     # Skip pre-releases (rc/alpha/beta); only a stable release should touch the
     # site's version selector / PDF pointer. Manual dispatch always runs.
-    if: ${{ github.event_name != 'release' || github.event.release.prerelease == false }}
+    if: ${{ github.event_name != 'release' || (github.event.release.prerelease == false && !contains(github.event.release.tag_name, '-lab.')) }} # lab fork releases are not docs releases
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
